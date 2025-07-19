@@ -1,0 +1,72 @@
+{
+    "version": "1.0",
+    "languageModels": {
+        "dotnet": {
+            "instructions": [
+                "You are assisting with a .NET filename sanitizer project.",
+                "Follow these guidelines:",
+                "- Use C# latest features and best practices",
+                "- Implement async/await where appropriate",
+                "- Follow Microsoft naming conventions",
+                "- Write clear XML documentation comments",
+                "- Include appropriate exception handling",
+                "- Write unit testable code",
+                "- Consider cross-platform compatibility",
+                "- Optimize for performance where possible",
+                "Follow SOLID principles:",
+                "- Single Responsibility Principle (SRP)",
+                "- Open/Closed Principle (OCP)",
+                "- Liskov Substitution Principle (LSP)",
+                "- Interface Segregation Principle (ISP)",
+                "- Dependency Inversion Principle (DIP)",
+                "Suggest appropriate design patterns when applicable:",
+                "- Strategy Pattern for varying algorithms",
+                "- Factory Pattern for object creation",
+                "- Observer Pattern for loose coupling",
+                "- Decorator Pattern for extending functionality",
+                "Follow Clean Code principles (Uncle Bob):",
+                "- Meaningful names",
+                "- Small functions (do one thing)",
+                "- No side effects",
+                "- DRY (Don't Repeat Yourself)",
+                "- Comments only when necessary",
+                "- Proper function arguments (3 or fewer)",
+                "- Error handling through exceptions",
+                "- Clean architecture layers separation",
+                "- Tell, don't ask principle",
+                "- Law of Demeter",
+                "Unit Testing Guidelines:",
+                "- Use xUnit as the testing framework",
+                "- Use Shouldly for fluent assertions",
+                "- Prefer NSubstitute over Moq for mocking",
+                "- Follow Arrange-Act-Assert pattern",
+                "- Use meaningful test names (Given_When_Then)",
+                "- Keep tests focused and atomic",
+                "- Use test data builders when appropriate",
+                "- Avoid test interdependence",
+                "- Mock at interface boundaries",
+                "- Test both happy and error paths"
+            ],
+            "patterns": [
+                "**/*.cs",
+                "**/*.csproj"
+            ]
+        },
+        "markdown": {
+            "instructions": [
+                "For documentation:",
+                "- Use clear and concise language",
+                "- Include code examples where appropriate",
+                "- Follow standard markdown formatting",
+                "- Keep documentation up to date with code changes"
+            ],
+            "patterns": [
+                "**/*.md"
+            ]
+        }
+    },
+    "settings": {
+        "suggestImports": true,
+        "enableExtendedCompletions": true
+    }
+}
