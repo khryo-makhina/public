@@ -39,12 +39,13 @@
                 "- Use xUnit as the testing framework",
                 "- Use Shouldly for fluent assertions",
                 "- Prefer NSubstitute over Moq for mocking",
-                "- Follow Arrange-Act-Assert pattern",
-                "- Use meaningful test names (Given_When_Then)",
+                "- Follow Setup/Test/Verify pattern in test methods",
+                "- Name system under test as 'sut' for local variables",
+                "- Name system under test as '_sut' for member variables",
+                "- Use clear test names in format: MethodName_Scenario_ExpectedResult",
                 "- Keep tests focused and atomic",
-                "- Use test data builders when appropriate",
-                "- Avoid test interdependence",
-                "- Mock at interface boundaries",
+                "- Structure test methods with clear comments for each phase",
+                "- Use meaningful test data",
                 "- Test both happy and error paths"
             ],
             "patterns": [
