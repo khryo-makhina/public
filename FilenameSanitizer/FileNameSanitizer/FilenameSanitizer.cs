@@ -18,14 +18,17 @@ public partial class FilenameSanitizer
         "LPT1", "LPT2", "LPT3", "LPT4"
     };
     private readonly string _folder;
+    private readonly IFileSystem _fileSystem;
 
     /// <summary>
     /// Initializes a new instance of the FilenameSanitizer class.
     /// </summary>
     /// <param name="folder">Optional working folder. If not specified, uses current directory.</param>
-    public FilenameSanitizer(string? folder = null)
+    /// <param name="fileSystem">Optional file system implementation. If not specified, uses default file system.</param>
+    public FilenameSanitizer(string? folder = null, IFileSystem? fileSystem = null)
     {
         _folder = ResolveFolderPath(folder);
+        _fileSystem = fileSystem ?? new FileSystem();
     }
 
     /// <summary>
@@ -66,13 +69,13 @@ public partial class FilenameSanitizer
 
     private IEnumerable<string> GetFilesFromWorkingFolder(FilenameSanitationOperationLog log)
     {
-        if (!Directory.Exists(_folder))
+        if (!_fileSystem.DirectoryExists(_folder))
         {
             log.Errors.Add($"Folder '{_folder}' does not exist.");
             return Enumerable.Empty<string>();
         }
 
-        return Directory.GetFiles(_folder);
+        return _fileSystem.GetFiles(_folder);
     }
 
     private void RenameFileIfNeeded(string file, FilenameSanitationOperationLog log)
@@ -93,9 +96,11 @@ public partial class FilenameSanitizer
             return false;
         }
 
-        if (sanitizedFileName == originalFile)
+        // Compare just the filenames, not the full paths
+        var originalFileName = Path.GetFileName(originalFile);
+        if (sanitizedFileName == originalFileName)
         {
-            log.Warnings.Add($"File '{originalFile}' is already sanitized. Skipping.");
+            log.Warnings.Add($"File '{originalFileName}' is already sanitized. Skipping.");
             return false;
         }
 
@@ -106,7 +111,7 @@ public partial class FilenameSanitizer
     {
         var newFilePath = Path.Combine(_folder, sanitizedFileName);
 
-        if (File.Exists(newFilePath))
+        if (_fileSystem.FileExists(newFilePath))
         {
             log.Errors.Add($"File '{newFilePath}' already exists. Skipping rename for '{originalFile}'.");
             return;
@@ -114,7 +119,7 @@ public partial class FilenameSanitizer
 
         try
         {
-            File.Move(originalFile, newFilePath);
+            _fileSystem.MoveFile(originalFile, newFilePath);
         }
         catch (Exception ex)
         {

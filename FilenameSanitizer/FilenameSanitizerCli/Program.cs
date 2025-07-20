@@ -10,8 +10,8 @@ if (folder == null)
 
 try
 {
-    var sanitizer = new FilenameSanitizer(folder);
-    FilenameSanitationOperation operation;
+    var sanitizer = new FilenameSanitizer.FilenameSanitizer(folder);
+    FilenameSanitizer.FilenameSanitationOperation operation;
 
     if (patterns != null)
     {

@@ -17,10 +17,11 @@ public static class Sanitizer
     };
 
     /// <summary>
-    /// This routine ensure that file name, which is originally an AWS S3 BLOB resource key, can be used in the target OS.
+    /// This routine ensure that file name, which contains folder separators, e.g. an AWS S3 BLOB resource key. 
+    /// The resulting filename will be sanitized to meet OS requirements.
     /// </summary>
     /// <param name="fileName">The file to have a check on.</param>
-    /// <returns>Sanitized filename.</returns>
+    /// <returns>Sanitized filename, without folder separators</returns>
     /// <exception cref="ArgumentNullException"></exception>
     public static string GetSanitizedFilenameWithPathRemoved(string fileName)
     {
@@ -45,6 +46,16 @@ public static class Sanitizer
 
         // Replace invalid characters with underscore
         fileName = invalidChars.Aggregate(fileName, (current, c) => current.Replace(c, '_'));
+
+        // Clean up multiple consecutive underscores
+        fileName = System.Text.RegularExpressions.Regex.Replace(fileName, "__+", "_");
+
+        // Remove leading and trailing whitespace
+        fileName = fileName.Trim();
+
+        // Remove spaces before and after the file extension dot
+        fileName = System.Text.RegularExpressions.Regex.Replace(fileName, @"\s+\.", ".");
+        fileName = System.Text.RegularExpressions.Regex.Replace(fileName, @"\.\s+", ".");
 
         // Remove control characters
         fileName = Regex.Replace(fileName, @"\p{C}+", string.Empty);

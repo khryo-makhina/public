@@ -1,10 +1,27 @@
 using Shouldly;
 using Xunit;
+using FilenameSanitizer;
 
-namespace FileNameSanitizer.Tests;
+namespace FilenameSanitizer.Tests;
 
 public class SanitizerTests
 {
+    [Theory]
+    [InlineData("test:file.txt", "test_file.txt")]
+    [InlineData("test/file.txt", "test_file.txt")]
+    [InlineData("test\\file.txt", "test_file.txt")]
+    [InlineData("test<>file.txt", "test_file.txt")]
+    [InlineData("COM1.txt", "_COM1.txt")]
+    [InlineData("PRN.doc", "_PRN.doc")]
+    public void SanitizeFileName_ShouldSanitizeCorrectly(string input, string expected)
+    {
+        // Test
+        var actual = Sanitizer.SanitizeFileName(input);
+
+        // Verify
+        actual.ShouldBe(expected);
+    }
+
     [Theory]
     [InlineData(" path/to/test_file.txt", "test_file.txt")]
     [InlineData("path/to/test_file.txt ", "test_file.txt")]
@@ -14,9 +31,6 @@ public class SanitizerTests
     [InlineData("path/to/test_file. txt", "test_file.txt")]
     public void GetSanitizedFilenameWithPathRemoved_WhenContainsSpaces_ShouldSanitize(string input, string expected)
     {
-        // Setup
-        var sut = new Sanitizer();
-
         // Test
         var actual = Sanitizer.GetSanitizedFilenameWithPathRemoved(input);
 
@@ -53,7 +67,6 @@ public class SanitizerTests
     public void GetSanitizedFilenameWithPathRemoved_WhenContainsSpecialCharacters_ShouldReplaceWithUnderscore(string input)
     {
         // Setup
-        var sut = new Sanitizer();
         var expected = "test_file.txt";
 
         // Test
@@ -72,11 +85,10 @@ public class SanitizerTests
     public void GetSanitizedFilenameWithPathRemoved_ShouldSanitizeCorrectly(string input, string expected)
     {
         // Setup
-        var sut = new Sanitizer();
+        // Setup
 
         // Test
         var actual = Sanitizer.GetSanitizedFilenameWithPathRemoved(input);
-
         // Verify
         actual.ShouldBe(expected);
     }
