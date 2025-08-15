@@ -1,6 +1,6 @@
 namespace FilenameSanitizer;
 
-public class FilenameSanitationOperationLog
+public class OperationLogger
 {
     public List<string> Errors { get; private set; } = new();
     public List<string> Warnings { get; private set; } = new();
@@ -14,21 +14,34 @@ public class FilenameSanitationOperationLog
 
     public bool HasErrorsOrWarnings => HasErrors || HasWarnings;
 
+    public string WorkingFolder { get; }
+
+    private readonly string _logFileName;
+    public const string LogFileNameTemplate = "FileNameSanitizer.log.";
+
+    public string LogFilePath { get { return _logFileName; } }
+
+
+    public OperationLogger(string workingFolder)
+    {
+        WorkingFolder = workingFolder;
+
+        var timestamp = DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss");
+        _logFileName = Path.Combine(WorkingFolder, $"{LogFileNameTemplate}{timestamp}.txt");
+    }
+
     /// <summary>
     /// Writes the log entries to a file in the specified folder.
     /// </summary>
     /// <param name="folder">Folder where the log file will be created</param>
-    public void FlushToFile(string folder)
+    public void FlushToFile()
     {
-        var timestamp = DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss");
-        var logFileName = Path.Combine(folder, $"FileNameSanitizer.log.{timestamp}.txt");
-
         var logEntries = FormatLogEntries();
 
         try
         {
-            Directory.CreateDirectory(folder);
-            File.WriteAllLines(logFileName, logEntries);
+            Directory.CreateDirectory(WorkingFolder);
+            File.WriteAllLines(_logFileName, logEntries);
         }
         catch (Exception ex)
         {

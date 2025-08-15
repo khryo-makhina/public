@@ -4,30 +4,37 @@ namespace FilenameSanitizer;
 /// Sanitizes filenames to ensure they are valid for use across different operating systems.
 /// Handles removal of invalid characters and ensures OS compatibility.
 /// </summary>
-public partial class FilenameSanitizer
+public class FilenameSanitizer
 {
     // Maximum filename lengths for different systems
     private const int MaxWindowsPathLength = 260;
     private const int MaxPosixNameLength = 255;
 
     // Windows reserved names (CON, PRN, AUX, etc.)
-    private static readonly HashSet<string> ReservedNames = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> WindowsReservedNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "CON", "PRN", "AUX", "NUL",
         "COM1", "COM2", "COM3", "COM4",
         "LPT1", "LPT2", "LPT3", "LPT4"
     };
+
     private readonly string _folder;
     private readonly IFileSystem _fileSystem;
+    private readonly ISanitizerSettingsLoader _sanitizerSettingsLoader;
+    public OperationLogger Logger;
+
 
     /// <summary>
     /// Initializes a new instance of the FilenameSanitizer class.
     /// </summary>
     /// <param name="folder">Optional working folder. If not specified, uses current directory.</param>
+    /// <param name="sanitizerSettingsLoader">Optional sanitizer settings loader. If not specified, uses default settings loader.</param>
     /// <param name="fileSystem">Optional file system implementation. If not specified, uses default file system.</param>
-    public FilenameSanitizer(string? folder = null, IFileSystem? fileSystem = null)
+    public FilenameSanitizer(string? folder = null, ISanitizerSettingsLoader? sanitizerSettingsLoader = null, IFileSystem? fileSystem = null)
     {
         _folder = ResolveFolderPath(folder);
+        Logger = new OperationLogger(folder ?? Directory.GetCurrentDirectory());
+        _sanitizerSettingsLoader = sanitizerSettingsLoader ?? new SanitizerSettingsLoader();
         _fileSystem = fileSystem ?? new FileSystem();
     }
 
@@ -46,74 +53,87 @@ public partial class FilenameSanitizer
         return Path.GetFullPath(folder);
     }
 
-    public FilenameSanitationOperationLog OperationLog { get; private set; } = new();
-
     /// <summary>
     /// Renames files in the working folder to meet OS filename requirements.
     /// </summary>
-    public FilenameSanitationOperation RenameFilesToMeetOsRequirements()
-    {
-        var operation = new FilenameSanitationOperation(_folder);
-        
-        var files = GetFilesFromWorkingFolder(operation.Log);
-        if (files.Any())
+    public void RenameFilesToMeetOsRequirements()
+    {        
+        var filePaths = GetFilePathsFromWorkingFolder();
+        Logger.Info.Add("Starting to sanitize filenames in folder: " + _folder);
+        if (filePaths.Any())
         {
-            foreach (var file in files)
+            Logger.Info.Add($"Found {filePaths.Count()} files in folder: {_folder}");
+            foreach (var filePath in filePaths)
             {
-                RenameFileIfNeeded(file, operation.Log);
+                Logger.Info.Add($"Processing file: {filePath}");
+                RenameFileIfNeeded(filePath);
             }
         }
-
-        return operation;
     }
 
-    private IEnumerable<string> GetFilesFromWorkingFolder(FilenameSanitationOperationLog log)
+    private IEnumerable<string> GetFilePathsFromWorkingFolder()
     {
         if (!_fileSystem.DirectoryExists(_folder))
         {
-            log.Errors.Add($"Folder '{_folder}' does not exist.");
+            Logger.Errors.Add($"Folder '{_folder}' does not exist.");
             return Enumerable.Empty<string>();
         }
-
-        return _fileSystem.GetFiles(_folder);
-    }
-
-    private void RenameFileIfNeeded(string file, FilenameSanitationOperationLog log)
-    {
-        var sanitizedFileName = GetSanitizedFilenameWithPathRemoved(file);
         
-        if (!ShouldRenameFile(file, sanitizedFileName, log))
-            return;
-
-        TryRenameFile(file, sanitizedFileName, log);
+        var allFilePaths = _fileSystem.GetFiles(_folder);
+        var filePaths = new List<string>();
+        foreach(var filePath in allFilePaths)
+        { 
+            if(FilenameSanitizer.IsReservedName(filePath))
+            {
+                Logger.Info.Add($"Skipping reserved file name: {filePath}");
+                continue;
+            }
+            filePaths.Add(filePath);
+        }
+        return filePaths;
     }
 
-    private bool ShouldRenameFile(string originalFile, string sanitizedFileName, FilenameSanitationOperationLog log)
+    private static bool IsReservedName(string filePath)
     {
-        if (string.IsNullOrWhiteSpace(sanitizedFileName))
+        var fileName = Path.GetFileName(filePath);
+        if (fileName == Sanitizer.SanitizerReplacePatternsFile)
         {
-            log.Errors.Add($"File '{originalFile}' has an empty sanitized filename. Skipping.");
-            return false;
+            return true;
         }
 
-        // Compare just the filenames, not the full paths
-        var originalFileName = Path.GetFileName(originalFile);
-        if (sanitizedFileName == originalFileName)
+        if (fileName == Sanitizer.SanitizerSettingsFile)
         {
-            log.Warnings.Add($"File '{originalFileName}' is already sanitized. Skipping.");
-            return false;
+            return true;
         }
 
-        return true;
+        if (fileName.StartsWith(OperationLogger.LogFileNameTemplate))
+        {
+            return true;
+        }
+
+        return false;
     }
 
-    private void TryRenameFile(string originalFile, string sanitizedFileName, FilenameSanitationOperationLog log)
+    private void RenameFileIfNeeded(string filePath)
+    {
+        var sanitizedFileName = GetSanitizedFilenameWithPathRemoved(filePath);
+
+        if (!ShouldRenameFile(filePath, sanitizedFileName))
+        {
+            Logger.Info.Add($"Skipping file: {filePath}");
+            return;
+        }
+
+        TryRenameFile(filePath, sanitizedFileName);
+    }
+
+    private void TryRenameFile(string originalFile, string sanitizedFileName)
     {
         var newFilePath = Path.Combine(_folder, sanitizedFileName);
 
         if (_fileSystem.FileExists(newFilePath))
         {
-            log.Errors.Add($"File '{newFilePath}' already exists. Skipping rename for '{originalFile}'.");
+            Logger.Errors.Add($"File '{newFilePath}' already exists. Skipping rename for '{originalFile}'.");
             return;
         }
 
@@ -123,57 +143,90 @@ public partial class FilenameSanitizer
         }
         catch (Exception ex)
         {
-            log.Errors.Add($"Error renaming file '{originalFile}' to '{newFilePath}': {ex.Message}");
+            Logger.Errors.Add($"Error renaming file '{originalFile}' to '{newFilePath}': {ex.Message}");
         }
     }
 
-    private static string GetSanitizedFilenameWithPathRemoved(string file)
+    private string GetSanitizedFilenameWithPathRemoved(string filePath)
     {
-        var sanitizedFilename = Sanitizer.SanitizeFileName(Path.GetFileName(file));
-        
+        Logger.Info.Add($"Sanitizing filename: {filePath}");
+        var filename = Path.GetFileName(filePath);
+
+        var sanitizer = new Sanitizer(_sanitizerSettingsLoader);
+        var sanitizedFilename = sanitizer.SanitizeFileName(filename);
+
         if (sanitizedFilename.Length > MaxPosixNameLength)
         {
             sanitizedFilename = sanitizedFilename[..MaxPosixNameLength];
         }
+
+        Logger.Info.Add($"Sanitized filename: {sanitizedFilename}");
         return sanitizedFilename;
     }
+
+    private bool ShouldRenameFile(string originalFile, string sanitizedFileName)
+    {
+        if (string.IsNullOrWhiteSpace(sanitizedFileName))
+        {
+            Logger.Errors.Add($"File '{originalFile}' has an empty sanitized filename. Skipping.");
+            return false;
+        }
+
+        // Compare just the filenames, not the full paths
+        var originalFileName = Path.GetFileName(originalFile);
+        if (sanitizedFileName == originalFileName)
+        {
+            Logger.Warnings.Add($"File '{originalFileName}' is already sanitized. Skipping.");
+            return false;
+        }
+
+        return true;
+    }      
 
     /// <summary>
     /// Renames files by removing specified text patterns from filenames.
     /// </summary>
     /// <param name="patterns">New-line separated list of text patterns to remove from filenames</param>
-    public FilenameSanitationOperation RenameFilesRemovingPatterns(string patterns)
+    public void RenameFilesRemovingPatterns(string patterns)
     {
-        var operation = new FilenameSanitationOperation(_folder);
-        
-        var files = GetFilesFromWorkingFolder(operation.Log);
+        Logger.Info.Add($"Removing patterns from filenames in folder: {_folder}");
+        var files = GetFilePathsFromWorkingFolder();
         if (files.Any())
         {
             var patternsList = patterns.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var file in files)
             {
-                RenameFileRemovingPatternsIfNeeded(file, patternsList, operation.Log);
+                Logger.Info.Add($"Processing file: {file} with patters {patternsList}");
+                RenameFileRemovingPatternsIfNeeded(file, patternsList, Logger);
             }
         }
-
-        return operation;
     }
 
-    private void RenameFileRemovingPatternsIfNeeded(string file, string[] patterns, FilenameSanitationOperationLog log)
-    {
+    private void RenameFileRemovingPatternsIfNeeded(string file, string[] patterns, OperationLogger logger)
+    {        
         var fileName = Path.GetFileName(file);
         var sanitizedFileName = RemovePatternsFromFilename(fileName, patterns);
-        
-        if (!ShouldRenameFile(file, sanitizedFileName, log))
-            return;
 
-        TryRenameFile(file, sanitizedFileName, log);
+        if (!ShouldRenameFile(file, sanitizedFileName))
+        {
+            Logger.Info.Add($"Skipping file: {file}");
+            return;
+        }
+
+        TryRenameFile(file, sanitizedFileName);
     }
 
-    private static string RemovePatternsFromFilename(string fileName, string[] patterns)
+    private string RemovePatternsFromFilename(string fileName, string[] patterns)
     {
-        return patterns.Aggregate(fileName, (current, pattern) => 
-            current.Replace(pattern, string.Empty, StringComparison.OrdinalIgnoreCase));
+        Logger.Info.Add($"Removing patterns from filename: {fileName}");
+        string filenamePatternRemoved = patterns.Aggregate(seed: fileName, func: (currentSeed, pattern) =>
+        {
+            string filenameProcessed = currentSeed.Replace(pattern, string.Empty, StringComparison.OrdinalIgnoreCase);
+            return filenameProcessed;
+        });
+
+        Logger.Info.Add($"Filename after removing patterns: {filenamePatternRemoved}"); 
+        return filenamePatternRemoved;
     }
 }
 
