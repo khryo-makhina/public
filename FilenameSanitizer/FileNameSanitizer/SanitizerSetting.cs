@@ -32,4 +32,10 @@ public class SanitizerSetting : ISanitizerSetting
     /// </summary>
     [JsonPropertyName("ReplacementCharacter")]
     public char ReplacementCharacter { get; internal set; } = DefaultCharacter;
+   
+    /// <summary>
+    /// Gets the array of characters that are excluded from processing.
+    /// </summary>
+    [JsonPropertyName("ExcludedCharacters")]
+    public char[] ExcludedCharacters { get; internal set; } = Array.Empty<char>();
 }

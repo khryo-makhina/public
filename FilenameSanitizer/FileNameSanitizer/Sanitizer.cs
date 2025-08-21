@@ -21,6 +21,8 @@ public class Sanitizer : ISanitizer
         "LPT1", "LPT2", "LPT3", "LPT4"
     };
 
+    private const int FirstPrintableAsciiChar = 32; // ASCII space character
+
     public Sanitizer(ISanitizerSettingsLoader sanitizerSettings)
     {
         _sanitizerSettingsLoader = sanitizerSettings ?? throw new ArgumentNullException(nameof(sanitizerSettings));
@@ -165,7 +167,7 @@ public class Sanitizer : ISanitizer
                 '?', '=', '`', '\'', '¨', '~', '^', '*', '@', '£', '€', '$', ';', '-',
                 '\0', '/', '\\', // Additional POSIX unsafe characters
             })
-            .Where(c => c != settings.ReplacementCharacter) // Remove the replacement character from the list
+            .Where(c => c != settings.ReplacementCharacter && !settings.ExcludedCharacters.Contains(c)) // Remove the replacement character from the list
             .ToArray();
 
         // Replace invalid characters with settings.ReplacementCharacter
@@ -216,9 +218,9 @@ public class Sanitizer : ISanitizer
             return string.Empty; // Return an empty string for null or empty input
         }
 
-        // Filter out non-printable characters by removing any character that has a value less than 32
+        // Filter out non-printable characters by removing any character that has a value less than space
         return new string(fileName
-            .Where(ch => ch >= 32)
+            .Where(ch => ch >= FirstPrintableAsciiChar)
             .ToArray());
     }
 }
