@@ -6,4 +6,5 @@ public interface IFileSystem
     bool FileExists(string path);
     string[] GetFiles(string path);
     void MoveFile(string sourceFileName, string destFileName);
+    string ReadAllText(string path);
 }

@@ -4,26 +4,34 @@ namespace FilenameSanitizer;
 
 public class SanitizerSetting : ISanitizerSetting
 {
+    public static List<string> DefaultExcludedCharacters = new();
+
+    public SanitizerSetting()
+    {
+        ReplacementCharacter = DefaultCharacter;
+        ExcludedCharacters = DefaultExcludedCharacters;
+    }
+
     /// <summary>
     /// Default character used to replace invalid characters in filenames.
     /// Underscore ('_').
     /// </summary>
-    public static char DefaultCharacter
+    public static string DefaultCharacter
     {
         get 
         {
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
-                return ' '; // Default for Windows
+                return " "; // Default for Windows
             }
             else
             {
                 if (Environment.OSVersion.Platform == PlatformID.Unix || Environment.OSVersion.Platform == PlatformID.MacOSX)
                 {
-                    return '-'; // Default for POSIX systems
+                    return "-"; // Default for POSIX systems
                 }
             }
-            return '_'; 
+            return "_"; 
         }
     }
 
@@ -31,11 +39,22 @@ public class SanitizerSetting : ISanitizerSetting
     /// By default, the default character setting for the sanitizer to replace invalid characters.
     /// </summary>
     [JsonPropertyName("ReplacementCharacter")]
-    public char ReplacementCharacter { get; internal set; } = DefaultCharacter;
+    public string ReplacementCharacter { get; set; } = string.Empty;
    
     /// <summary>
     /// Gets the array of characters that are excluded from processing.
     /// </summary>
     [JsonPropertyName("ExcludedCharacters")]
-    public char[] ExcludedCharacters { get; internal set; } = Array.Empty<char>();
+    public List<string> ExcludedCharacters { get; set; } = new();
+
+    /// <summary>
+    /// Checks if the provided setting is empty, meaning it has the default replacement character and no excluded characters.
+    /// </summary>
+    /// <param name="setting"><see cref="SanitizerSetting"/></param>
+    /// <returns></returns>
+    public bool IsEmpty() => 
+        string.IsNullOrEmpty(ReplacementCharacter) && 
+        (ExcludedCharacters == null || ExcludedCharacters.Count == 0);
+
+    public static ISanitizerSetting EmptyInstance => new SanitizerSetting();
 }

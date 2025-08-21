@@ -167,11 +167,11 @@ public class Sanitizer : ISanitizer
                 '?', '=', '`', '\'', '¨', '~', '^', '*', '@', '£', '€', '$', ';', '-',
                 '\0', '/', '\\', // Additional POSIX unsafe characters
             })
-            .Where(c => c != settings.ReplacementCharacter && !settings.ExcludedCharacters.Contains(c)) // Remove the replacement character from the list
+            .Where(c => c.ToString() != settings.ReplacementCharacter && !settings.ExcludedCharacters.Contains(c.ToString())) // Remove the replacement character from the list
             .ToArray();
 
         // Replace invalid characters with settings.ReplacementCharacter
-        filename = invalidChars.Aggregate(filename, (current, c) => current.Replace(c, settings.ReplacementCharacter));
+        filename = invalidChars.Aggregate(filename, (current, c) => current.Replace(c.ToString(), settings.ReplacementCharacter));
         filename = CutOffTooLong(filename);
         return filename;
     }

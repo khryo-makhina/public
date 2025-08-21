@@ -4,7 +4,8 @@ namespace FilenameSanitizer
 {
     public interface ISanitizerSetting
     {
-        char ReplacementCharacter { get; }
-        char[] ExcludedCharacters { get; }
+        string ReplacementCharacter { get; }
+        List<string> ExcludedCharacters { get; }
+        bool IsEmpty();
     }
 }

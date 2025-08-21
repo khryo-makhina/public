@@ -30,12 +30,14 @@ public class FilenameSanitizer
     /// <param name="folder">Optional working folder. If not specified, uses current directory.</param>
     /// <param name="sanitizerSettingsLoader">Optional sanitizer settings loader. If not specified, uses default settings loader.</param>
     /// <param name="fileSystem">Optional file system implementation. If not specified, uses default file system.</param>
-    public FilenameSanitizer(string? folder = null, ISanitizerSettingsLoader? sanitizerSettingsLoader = null, IFileSystem? fileSystem = null)
+    /// <param name="logger">Optional logger implementation. If not specified, uses console logger.</param>
+    public FilenameSanitizer(string? folder = null, ISanitizerSettingsLoader? sanitizerSettingsLoader = null, IFileSystem? fileSystem = null, ILogger? logger = null)
     {
         _folder = ResolveFolderPath(folder);
         Logger = new OperationLogger(folder ?? Directory.GetCurrentDirectory());
-        _sanitizerSettingsLoader = sanitizerSettingsLoader ?? new SanitizerSettingsLoader();
-        _fileSystem = fileSystem ?? new FileSystem();
+        _fileSystem = fileSystem ?? new DefaultFileSystem();
+        var effectiveLogger = logger ?? new ConsoleLogger();
+        _sanitizerSettingsLoader = sanitizerSettingsLoader ?? new SanitizerSettingsLoader(_fileSystem, effectiveLogger, _folder);
     }
 
     /// <summary>
@@ -85,7 +87,9 @@ public class FilenameSanitizer
         { 
             if(FilenameSanitizer.IsReservedName(filePath))
             {
-                Logger.Info.Add($"Skipping reserved file name: {filePath}");
+                var filename = Path.GetFileName(filePath);
+
+                Logger.Info.Add($"Ignoring reserved file name: {filename}");
                 continue;
             }
             filePaths.Add(filePath);
@@ -149,8 +153,9 @@ public class FilenameSanitizer
 
     private string GetSanitizedFilenameWithPathRemoved(string filePath)
     {
-        Logger.Info.Add($"Sanitizing filename: {filePath}");
         var filename = Path.GetFileName(filePath);
+
+        Logger.Info.Add($"Sanitizing filename: {filename}");
 
         var sanitizer = new Sanitizer(_sanitizerSettingsLoader);
         var sanitizedFilename = sanitizer.SanitizeFileName(filename);
@@ -229,5 +234,3 @@ public class FilenameSanitizer
         return filenamePatternRemoved;
     }
 }
-
-

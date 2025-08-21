@@ -1,8 +1,9 @@
+using System;
 using System.IO;
 
 namespace FilenameSanitizer;
 
-public class FileSystem : IFileSystem
+public class DefaultFileSystem : IFileSystem
 {
     public bool DirectoryExists(string path) => Directory.Exists(path);
     public bool FileExists(string path) => File.Exists(path);

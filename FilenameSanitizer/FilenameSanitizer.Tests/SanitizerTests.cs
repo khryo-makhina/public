@@ -12,13 +12,13 @@ namespace FilenameSanitizer.Tests
             SetUpSut();
         }
 
-        private Sanitizer SetUpSut(char replacementCharacter = '_', char[]? excludedChars = null)
+        private Sanitizer SetUpSut(string replacementCharacter = "_", List<string>? excludedChars = null)
         {
             // Initialize any required settings or dependencies here
             var sanitzerSettingsLoader = Substitute.For<ISanitizerSettingsLoader>();
             var sanitizerSetting = Substitute.For<ISanitizerSetting>();
             sanitizerSetting.ReplacementCharacter.Returns(replacementCharacter);
-            sanitizerSetting.ExcludedCharacters.Returns(excludedChars ?? Array.Empty<char>());
+            sanitizerSetting.ExcludedCharacters.Returns(excludedChars ?? new List<string>());
             sanitzerSettingsLoader.LoadFromFile(Arg.Any<string>()).Returns(sanitizerSetting);
 
             return new Sanitizer(sanitzerSettingsLoader);
@@ -34,7 +34,7 @@ namespace FilenameSanitizer.Tests
         public void SanitizeFileName_SpaceIsReplacementCharacter_SanitizedFilenameContainsSpace(string input, string expected)
         {
             //Setup
-            Sanitizer sut = SetUpSut(' ');
+            Sanitizer sut = SetUpSut(" ");
 
             // Test
             var actual = sut.SanitizeFileName(input);
@@ -146,7 +146,7 @@ namespace FilenameSanitizer.Tests
             string input, string expected, char excludedChar)
         {
             // Setup
-            var sut = SetUpSut('_', new[] { excludedChar });
+            var sut = SetUpSut("_", new List<string>() { excludedChar.ToString() });
 
             // Test
             var actual = sut.SanitizeFileName(input);
@@ -159,7 +159,7 @@ namespace FilenameSanitizer.Tests
         public void SanitizeFileName_WhenReplacementCharacterInInvalidChars_ShouldNotReplaceItself()
         {
             // Setup
-            var sut = SetUpSut('_', Array.Empty<char>());
+            var sut = SetUpSut("_", new List<string>());
 
             // Test
             var actual = sut.SanitizeFileName("test_file_name.txt");
@@ -172,7 +172,7 @@ namespace FilenameSanitizer.Tests
         public void SanitizeFileName_WithMultipleExcludedCharacters_ShouldPreserveAll()
         {
             // Setup
-            var sut = SetUpSut('_', new[] { '-', '#' });
+            var sut = SetUpSut("_", new List<string> { "-", "#" });
 
             // Test
             var actual = sut.SanitizeFileName("test-file#name@.txt");

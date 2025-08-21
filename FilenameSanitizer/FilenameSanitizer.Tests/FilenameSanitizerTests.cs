@@ -9,7 +9,7 @@ public partial class FilenameSanitizerTests
     private readonly IFileSystem _fileSystem;
     private const string TestFolder = @"C:\TestFolder";
 
-    private readonly ISanitizerSettingsLoader _sanitzerSettingsLoader;
+    private ISanitizerSettingsLoader _sanitzerSettingsLoader;
 
 
     public FilenameSanitizerTests()
@@ -17,10 +17,19 @@ public partial class FilenameSanitizerTests
         _fileSystem = Substitute.For<IFileSystem>();
         _fileSystem.DirectoryExists(TestFolder).Returns(true);
 
+        SetUpSut();
+    }
+
+    private FilenameSanitizer SetUpSut(string replacementCharacter = "")
+    {
         var sanitizerSetting = Substitute.For<ISanitizerSetting>();
-        sanitizerSetting.ReplacementCharacter.Returns('_');
+        sanitizerSetting.ReplacementCharacter.Returns(replacementCharacter == "" ? SanitizerSetting.DefaultCharacter: replacementCharacter);
+        sanitizerSetting.ExcludedCharacters.Returns(SanitizerSetting.DefaultExcludedCharacters);
         _sanitzerSettingsLoader = Substitute.For<ISanitizerSettingsLoader>();
         _sanitzerSettingsLoader.LoadFromFile(Arg.Any<string>()).Returns(sanitizerSetting);
+
+        var sut = new FilenameSanitizer(TestFolder, _sanitzerSettingsLoader, _fileSystem);
+        return sut;
     }
 
     [Theory]
@@ -35,7 +44,8 @@ public partial class FilenameSanitizerTests
         var filePathDestination = Path.Combine(TestFolder, expectedName);
         _fileSystem.GetFiles(TestFolder).Returns(new[] { filePathSource });
         _fileSystem.FileExists(filePathDestination).Returns(false);
-        var sut = new FilenameSanitizer(TestFolder, _sanitzerSettingsLoader, _fileSystem);
+
+        var sut = SetUpSut("_");        
 
         // Test
         sut.RenameFilesToMeetOsRequirements();

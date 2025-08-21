@@ -19,18 +19,15 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<!-- Generate the NuGet package on every build -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<Title>Filename sanitizer utility</Title>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="System.Text.Json" Version="9.0.2" />
 	</ItemGroup>
 	<ItemGroup>
-		<Content Include="sanitizer_replace_patterns.txt" CopyToOutputDirectory="Always"/>
-		<Content Include="sanitizer_settings.json" CopyToOutputDirectory="Always"/>
-	</ItemGroup>
-
-	<Target Name="RunTestsOnBuild" AfterTargets="Build">
-		<Exec Command="dotnet test ../FilenameSanitizer.Tests/FilenameSanitizer.Tests.csproj --no-build" />
-	</Target>
+		<Content Include="sanitizer_replace_patterns.txt" CopyToOutputDirectory="Always" />
+		<Content Include="sanitizer_settings.json" CopyToOutputDirectory="Always" />
+	</ItemGroup>	
 
 </Project>

@@ -1,7 +1,4 @@
 {
   "ReplacementCharacter": " ",
-  "ExcludedCharacters": [
-    "-",
-    "#"
-  ]
+  "ExcludedCharacters": [ "-", "#" ]
 }
