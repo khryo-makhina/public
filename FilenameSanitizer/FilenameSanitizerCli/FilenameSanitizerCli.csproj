@@ -8,7 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FilenameSanitizer\FilenameSanitizer.csproj" />
+    <PackageReference Include="FilenameSanitizer" Version="1.0.0" />
+    <PackageReference Include="System.Net.Http" Version="4.3.0" />
   </ItemGroup>
 
 </Project>
