@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace FilenameSanitizer;
 
 public class SanitizerSettingsLoader : ISanitizerSettingsLoader
@@ -21,7 +23,7 @@ public class SanitizerSettingsLoader : ISanitizerSettingsLoader
         try
         {
             var jsonContent = File.ReadAllText(filePath);
-            var deserializedSettings = Newtonsoft.Json.JsonConvert.DeserializeObject<SanitizerSetting>(jsonContent);
+            var deserializedSettings = JsonSerializer.Deserialize<SanitizerSetting>(jsonContent);
             settings = deserializedSettings ?? settings; // Use deserialized settings or default if deserialization fails             
         }
         catch (Exception ex)

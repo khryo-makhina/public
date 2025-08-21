@@ -1,4 +1,3 @@
-using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 
 namespace FilenameSanitizer;
@@ -31,6 +30,6 @@ public class SanitizerSetting : ISanitizerSetting
     /// <summary>
     /// By default, the default character setting for the sanitizer to replace invalid characters.
     /// </summary>
-    [JsonProperty]
+    [JsonPropertyName("ReplacementCharacter")]
     public char ReplacementCharacter { get; internal set; } = DefaultCharacter;
 }
