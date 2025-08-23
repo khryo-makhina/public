@@ -63,79 +63,92 @@ namespace FilenameSanitizer.Tests
         }
 
         [Theory]
-        [InlineData(" path/to/test_file.txt", "test_file.txt")]
-        [InlineData("path/to/test_file.txt ", "test_file.txt")]
-        [InlineData(" path/to/test_file.txt ", "test_file.txt")]
-        [InlineData("path/to/ test_file.txt", "test_file.txt")]
-        [InlineData("path/to/test_file .txt", "test_file.txt")]
-        [InlineData("path/to/test_file. txt", "test_file.txt")]
-        public void GetSanitizedFilenameWithPathRemoved_WhenContainsSpaces_ShouldSanitize(string input, string expected)
+        [InlineData("test_file.txt", true)]
+        [InlineData("test:file.txt", false)]
+        [InlineData("test<>file.txt", false)]
+        [InlineData("COM1.txt", false)]
+        [InlineData("test file.txt", false)]
+        public void IsFilenameSanitized_ShouldReturnCorrectResult(string filename, bool expected)
         {
             //Setup
             Sanitizer sut = SetUpSut();
 
             // Test
-            var actual = sut.GetSanitizedFilenameWithPathRemoved(input);
+            var actual = sut.IsFilenameSanitized(filename);
 
             // Verify
             actual.ShouldBe(expected);
         }
 
         [Theory]
-        [InlineData("path/to/test?file.txt")]
-        [InlineData("path/to/test=file.txt")]
-        [InlineData("path/to/test`file.txt")]
-        [InlineData("path/to/test'file.txt")]
-        [InlineData("path/to/test¨file.txt")]
-        [InlineData("path/to/test~file.txt")]
-        [InlineData("path/to/test^file.txt")]
-        [InlineData("path/to/test*file.txt")]
-        [InlineData("path/to/test@file.txt")]
-        [InlineData("path/to/test£file.txt")]
-        [InlineData("path/to/test€file.txt")]
-        [InlineData("path/to/test$file.txt")]
-        [InlineData("path/to/test;file.txt")]
-        [InlineData("path/to/test-file.txt")]
-        [InlineData("path/to/test&file.txt")]
-        [InlineData("path/to/test!file.txt")]
-        [InlineData("path/to/test[file.txt")]
-        [InlineData("path/to/test]file.txt")]
-        [InlineData("path/to/test{file.txt")]
-        [InlineData("path/to/test}file.txt")]
-        [InlineData("path/to/test(file.txt")]
-        [InlineData("path/to/test)file.txt")]
-        [InlineData("path/to/test<file.txt")]
-        [InlineData("path/to/test>file.txt")]
-        [InlineData("path/to/test|file.txt")]
-        public void GetSanitizedFilenameWithPathRemoved_WhenContainsSpecialCharacters_ShouldReplaceWithUnderscore(string input)
+        [InlineData("test?file.txt")]
+        [InlineData("test=file.txt")]
+        [InlineData("test`file.txt")]
+        [InlineData("test'file.txt")]
+        [InlineData("test¨file.txt")]
+        [InlineData("test~file.txt")]
+        [InlineData("test^file.txt")]
+        [InlineData("test*file.txt")]
+        [InlineData("test@file.txt")]
+        [InlineData("test£file.txt")]
+        [InlineData("test€file.txt")]
+        [InlineData("test$file.txt")]
+        [InlineData("test;file.txt")]
+        [InlineData("test-file.txt")]
+        [InlineData("test&file.txt")]
+        [InlineData("test!file.txt")]
+        [InlineData("test[file.txt")]
+        [InlineData("test]file.txt")]
+        [InlineData("test{file.txt")]
+        [InlineData("test}file.txt")]
+        [InlineData("test(file.txt")]
+        [InlineData("test)file.txt")]
+        [InlineData("test<file.txt")]
+        [InlineData("test>file.txt")]
+        [InlineData("test|file.txt")]
+        public void SanitizeFileName_WhenContainsSpecialCharacters_ShouldReplaceWithUnderscore(string input)
         {
             // Setup
             var expected = "test_file.txt";
             Sanitizer sut = SetUpSut();
 
             // Test
-            var actual = sut.GetSanitizedFilenameWithPathRemoved(input);
+            var actual = sut.SanitizeFileName(input);
 
             // Verify
             actual.ShouldBe(expected);
+            sut.IsFilenameSanitized(actual).ShouldBeTrue();
         }
 
         // Original test cases from FileNameSanitizer.Tests
         [Theory]
-        [InlineData("file:name.txt", "file_name.txt")]
-        [InlineData("COM1.txt", "_COM1.txt")]//Windows reserved name: COM1
-        [InlineData("file....txt", "file.txt")]
-        [InlineData("  file  .  txt  ", "file.txt")]
-        public void GetSanitizedFilenameWithPathRemoved_ShouldSanitizeCorrectly(string input, string expected)
+        [InlineData("")]
+        public void SanitizeFileName_WithEmpty_ShouldReturnEmpty(string input)
         {
             // Setup
             Sanitizer sut = SetUpSut();
 
             // Test
-            var actual = sut.GetSanitizedFilenameWithPathRemoved(input);
+            var actual = sut.SanitizeFileName(input);
 
             // Verify
-            actual.ShouldBe(expected);
+            actual.ShouldBe("");
+            sut.IsFilenameSanitized(actual).ShouldBeTrue();
+        }
+
+        [Fact]
+        public void SanitizeFileName_WithNull_ShouldReturnEmpty()
+        {
+            // Setup
+            Sanitizer sut = SetUpSut();
+            string? nullString = null;
+
+            // Test
+            var actual = sut.SanitizeFileName(nullString);
+
+            // Verify
+            actual.ShouldBe("");
+            sut.IsFilenameSanitized(actual).ShouldBeTrue();
         }   
 
         [Theory]

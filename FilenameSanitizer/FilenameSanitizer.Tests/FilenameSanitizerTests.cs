@@ -9,26 +9,19 @@ public partial class FilenameSanitizerTests
     private readonly IFileSystem _fileSystem;
     private const string TestFolder = @"C:\TestFolder";
 
-    private ISanitizerSettingsLoader _sanitzerSettingsLoader;
-
+    private ISanitizer _sanitizer;
 
     public FilenameSanitizerTests()
     {
         _fileSystem = Substitute.For<IFileSystem>();
         _fileSystem.DirectoryExists(TestFolder).Returns(true);
-
+        _sanitizer = Substitute.For<ISanitizer>();
         SetUpSut();
     }
 
-    private FilenameSanitizer SetUpSut(string replacementCharacter = "")
+    private IFilenameSanitizer SetUpSut()
     {
-        var sanitizerSetting = Substitute.For<ISanitizerSetting>();
-        sanitizerSetting.ReplacementCharacter.Returns(replacementCharacter == "" ? SanitizerSetting.DefaultCharacter: replacementCharacter);
-        sanitizerSetting.ExcludedCharacters.Returns(SanitizerSetting.DefaultExcludedCharacters);
-        _sanitzerSettingsLoader = Substitute.For<ISanitizerSettingsLoader>();
-        _sanitzerSettingsLoader.LoadFromFile(Arg.Any<string>()).Returns(sanitizerSetting);
-
-        var sut = new FilenameSanitizer(TestFolder, _sanitzerSettingsLoader, _fileSystem);
+        var sut = new FilenameSanitizer(TestFolder, _sanitizer, _fileSystem);
         return sut;
     }
 
@@ -44,8 +37,10 @@ public partial class FilenameSanitizerTests
         var filePathDestination = Path.Combine(TestFolder, expectedName);
         _fileSystem.GetFiles(TestFolder).Returns(new[] { filePathSource });
         _fileSystem.FileExists(filePathDestination).Returns(false);
+        _sanitizer.SanitizeFileName(originalName).Returns(expectedName);
+        _sanitizer.IsFilenameSanitized(originalName).Returns(false);
 
-        var sut = SetUpSut("_");        
+        var sut = SetUpSut();
 
         // Test
         sut.RenameFilesToMeetOsRequirements();
@@ -70,7 +65,9 @@ public partial class FilenameSanitizerTests
         var patterns = @"prefix-
 _old
 .bak";
-        var sut = new FilenameSanitizer(TestFolder, _sanitzerSettingsLoader, _fileSystem);
+        _sanitizer.SanitizeFileName(originalName).Returns(expectedName);
+        _sanitizer.IsFilenameSanitized(originalName).Returns(false);
+        var sut = SetUpSut();
 
         // Test
         sut.RenameFilesRemovingPatterns(patterns);
@@ -88,7 +85,7 @@ _old
         // Setup
         var nonExistentFolder = Path.Combine(TestFolder, "NonExistent");
         _fileSystem.DirectoryExists(nonExistentFolder).Returns(false);
-        var sut = new FilenameSanitizer(nonExistentFolder, _sanitzerSettingsLoader, _fileSystem);
+        var sut = new FilenameSanitizer(nonExistentFolder, _sanitizer, _fileSystem);
 
         // Test
         sut.RenameFilesToMeetOsRequirements();
@@ -106,7 +103,9 @@ _old
         // Setup
         var filePath = Path.Combine(TestFolder, fileName);
         _fileSystem.GetFiles(TestFolder).Returns(new[] { filePath });
-        var sut = new FilenameSanitizer(TestFolder, _sanitzerSettingsLoader, _fileSystem);
+        _sanitizer.IsFilenameSanitized(fileName).Returns(true);
+        _sanitizer.SanitizeFileName(fileName).Returns(fileName);
+        var sut = SetUpSut();
 
         // Test
         sut.RenameFilesToMeetOsRequirements();

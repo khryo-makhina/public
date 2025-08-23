@@ -1,8 +1,22 @@
-﻿namespace FilenameSanitizer
+﻿namespace FilenameSanitizer;
+
+/// <summary>
+/// Interface for filename sanitization functionality.
+/// Main responsibilities:
+/// <para>Pure filename sanitization logic</para>
+/// <para>Validation of filenames</para>
+/// <para>Handling character replacements and restrictions</para>
+/// <para>No file system operations</para>
+/// </summary>
+public interface ISanitizer
 {
-    public interface ISanitizer
-    {
-        string GetSanitizedFilenameWithPathRemoved(string fileName);
-        string SanitizeFileName(string fileName, string optionalFileNameIfEmpty = "");
-    }
+    /// <summary>
+    /// Sanitizes a filename to ensure it meets OS requirements.
+    /// </summary>
+    string SanitizeFileName(string fileName, string optionalFileNameIfEmpty = "");
+
+    /// <summary>
+    /// Gets whether a filename is already properly sanitized.
+    /// </summary>
+    bool IsFilenameSanitized(string fileName);
 }

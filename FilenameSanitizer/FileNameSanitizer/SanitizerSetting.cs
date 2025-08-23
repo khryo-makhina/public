@@ -2,10 +2,19 @@ using System.Text.Json.Serialization;
 
 namespace FilenameSanitizer;
 
+/// <summary>
+/// Default implementation of sanitizer settings.
+/// </summary>
 public class SanitizerSetting : ISanitizerSetting
 {
+    /// <summary>
+    /// Gets the default list of characters to exclude from sanitization.
+    /// </summary>
     public static List<string> DefaultExcludedCharacters = new();
 
+    /// <summary>
+    /// Initializes a new instance of the SanitizerSetting class with default values.
+    /// </summary>
     public SanitizerSetting()
     {
         ReplacementCharacter = DefaultCharacter;
@@ -13,8 +22,8 @@ public class SanitizerSetting : ISanitizerSetting
     }
 
     /// <summary>
-    /// Default character used to replace invalid characters in filenames.
-    /// Underscore ('_').
+    /// Gets the default character used to replace invalid characters in filenames.
+    /// On Windows, it's a space (' '), on Unix/MacOS it's an underscore ('_').
     /// </summary>
     public static string DefaultCharacter
     {
@@ -35,26 +44,21 @@ public class SanitizerSetting : ISanitizerSetting
         }
     }
 
-    /// <summary>
-    /// By default, the default character setting for the sanitizer to replace invalid characters.
-    /// </summary>
+    /// <inheritdoc />
     [JsonPropertyName("ReplacementCharacter")]
     public string ReplacementCharacter { get; set; } = string.Empty;
    
-    /// <summary>
-    /// Gets the array of characters that are excluded from processing.
-    /// </summary>
+    /// <inheritdoc />
     [JsonPropertyName("ExcludedCharacters")]
     public List<string> ExcludedCharacters { get; set; } = new();
 
-    /// <summary>
-    /// Checks if the provided setting is empty, meaning it has the default replacement character and no excluded characters.
-    /// </summary>
-    /// <param name="setting"><see cref="SanitizerSetting"/></param>
-    /// <returns></returns>
+    /// <inheritdoc />
     public bool IsEmpty() => 
         string.IsNullOrEmpty(ReplacementCharacter) && 
         (ExcludedCharacters == null || ExcludedCharacters.Count == 0);
 
+    /// <summary>
+    /// Gets an empty instance of the sanitizer settings.
+    /// </summary>
     public static ISanitizerSetting EmptyInstance => new SanitizerSetting();
 }

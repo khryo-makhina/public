@@ -3,12 +3,22 @@ using System.Text.Json.Serialization;
 
 namespace FilenameSanitizer;
 
+/// <summary>
+/// Default implementation for loading sanitizer settings from JSON files.
+/// </summary>
 public class SanitizerSettingsLoader : ISanitizerSettingsLoader
 {
     private readonly IFileSystem _fileSystem;
     private readonly ILogger _logger;
     private readonly string _baseDirectory;
 
+    /// <summary>
+    /// Initializes a new instance of the SanitizerSettingsLoader class.
+    /// </summary>
+    /// <param name="fileSystem">The file system to use for file operations</param>
+    /// <param name="logger">The logger to use for logging</param>
+    /// <param name="baseDirectory">Optional base directory. Defaults to current AppDomain's base directory</param>
+    /// <exception cref="ArgumentNullException">Thrown when fileSystem or logger is null</exception>
     public SanitizerSettingsLoader(IFileSystem fileSystem, ILogger logger, string? baseDirectory = null)
     {
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
@@ -16,6 +26,7 @@ public class SanitizerSettingsLoader : ISanitizerSettingsLoader
         _baseDirectory = baseDirectory ?? AppDomain.CurrentDomain.BaseDirectory;
     }
 
+    /// <inheritdoc />
     public ISanitizerSetting LoadFromFile(string sanitizerSettingsFile)
     {
         var filePath = Path.Combine(_baseDirectory, sanitizerSettingsFile);

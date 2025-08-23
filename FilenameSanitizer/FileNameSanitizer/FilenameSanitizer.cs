@@ -1,27 +1,14 @@
 namespace FilenameSanitizer;
 
-/// <summary>
-/// Sanitizes filenames to ensure they are valid for use across different operating systems.
-/// Handles removal of invalid characters and ensures OS compatibility.
-/// </summary>
-public class FilenameSanitizer
+/// <inheritdoc />
+public class FilenameSanitizer : IFilenameSanitizer
 {
-    // Maximum filename lengths for different systems
-    private const int MaxWindowsPathLength = 260;
-    private const int MaxPosixNameLength = 255;
-
-    // Windows reserved names (CON, PRN, AUX, etc.)
-    private static readonly HashSet<string> WindowsReservedNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "CON", "PRN", "AUX", "NUL",
-        "COM1", "COM2", "COM3", "COM4",
-        "LPT1", "LPT2", "LPT3", "LPT4"
-    };
-
     private readonly string _folder;
     private readonly IFileSystem _fileSystem;
-    private readonly ISanitizerSettingsLoader _sanitizerSettingsLoader;
-    public OperationLogger Logger;
+    private readonly ISanitizer _sanitizer;
+    
+    /// <inheritdoc />
+    public OperationLogger Logger { get; }
 
 
     /// <summary>
@@ -31,13 +18,22 @@ public class FilenameSanitizer
     /// <param name="sanitizerSettingsLoader">Optional sanitizer settings loader. If not specified, uses default settings loader.</param>
     /// <param name="fileSystem">Optional file system implementation. If not specified, uses default file system.</param>
     /// <param name="logger">Optional logger implementation. If not specified, uses console logger.</param>
-    public FilenameSanitizer(string? folder = null, ISanitizerSettingsLoader? sanitizerSettingsLoader = null, IFileSystem? fileSystem = null, ILogger? logger = null)
+    public FilenameSanitizer(string? folder = null, ISanitizer? sanitizer = null, IFileSystem? fileSystem = null, ILogger? logger = null)
     {
         _folder = ResolveFolderPath(folder);
-        Logger = new OperationLogger(folder ?? Directory.GetCurrentDirectory());
+        Logger = new OperationLogger(_folder);
         _fileSystem = fileSystem ?? new DefaultFileSystem();
         var effectiveLogger = logger ?? new ConsoleLogger();
-        _sanitizerSettingsLoader = sanitizerSettingsLoader ?? new SanitizerSettingsLoader(_fileSystem, effectiveLogger, _folder);
+        
+        if (sanitizer == null)
+        {
+            var settingsLoader = new SanitizerSettingsLoader(_fileSystem, effectiveLogger, _folder);
+            _sanitizer = new Sanitizer(settingsLoader);
+        }
+        else
+        {
+            _sanitizer = sanitizer;
+        }
     }
 
     /// <summary>
@@ -55,9 +51,7 @@ public class FilenameSanitizer
         return Path.GetFullPath(folder);
     }
 
-    /// <summary>
-    /// Renames files in the working folder to meet OS filename requirements.
-    /// </summary>
+    /// <inheritdoc />
     public void RenameFilesToMeetOsRequirements()
     {        
         var filePaths = GetFilePathsFromWorkingFolder();
@@ -100,12 +94,12 @@ public class FilenameSanitizer
     private static bool IsReservedName(string filePath)
     {
         var fileName = Path.GetFileName(filePath);
-        if (fileName == Sanitizer.SanitizerReplacePatternsFile)
+        if (fileName == SanitizerConstants.SanitizerReplacePatternsFile)
         {
             return true;
         }
 
-        if (fileName == Sanitizer.SanitizerSettingsFile)
+        if (fileName == SanitizerConstants.SanitizerSettingsFile)
         {
             return true;
         }
@@ -154,18 +148,11 @@ public class FilenameSanitizer
     private string GetSanitizedFilenameWithPathRemoved(string filePath)
     {
         var filename = Path.GetFileName(filePath);
-
         Logger.Info.Add($"Sanitizing filename: {filename}");
-
-        var sanitizer = new Sanitizer(_sanitizerSettingsLoader);
-        var sanitizedFilename = sanitizer.SanitizeFileName(filename);
-
-        if (sanitizedFilename.Length > MaxPosixNameLength)
-        {
-            sanitizedFilename = sanitizedFilename[..MaxPosixNameLength];
-        }
-
+        
+        var sanitizedFilename = _sanitizer.SanitizeFileName(filename);
         Logger.Info.Add($"Sanitized filename: {sanitizedFilename}");
+        
         return sanitizedFilename;
     }
 
@@ -177,9 +164,8 @@ public class FilenameSanitizer
             return false;
         }
 
-        // Compare just the filenames, not the full paths
         var originalFileName = Path.GetFileName(originalFile);
-        if (sanitizedFileName == originalFileName)
+        if (_sanitizer.IsFilenameSanitized(originalFileName))
         {
             Logger.Warnings.Add($"File '{originalFileName}' is already sanitized. Skipping.");
             return false;
@@ -188,10 +174,7 @@ public class FilenameSanitizer
         return true;
     }      
 
-    /// <summary>
-    /// Renames files by removing specified text patterns from filenames.
-    /// </summary>
-    /// <param name="patterns">New-line separated list of text patterns to remove from filenames</param>
+    /// <inheritdoc />
     public void RenameFilesRemovingPatterns(string patterns)
     {
         Logger.Info.Add($"Removing patterns from filenames in folder: {_folder}");

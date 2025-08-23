@@ -8,7 +8,7 @@ if (folder == null)
     return;
 }
 
-FilenameSanitizer.FilenameSanitizer filenameSanitizer = new FilenameSanitizer.FilenameSanitizer(folder);
+IFilenameSanitizer filenameSanitizer = new FilenameSanitizer.FilenameSanitizer(folder);
 
 try
 {
@@ -80,9 +80,9 @@ static (string folder, string semicommaSeparatedPatterns) ParseArguments(string[
 static void ShowHelp()
 {
     Console.WriteLine("FilenameSanitizerCli - Sanitize filenames for OS compatibility");
-    Console.WriteLine("Default settings file: " + Sanitizer.SanitizerSettingsFile);
-    Console.WriteLine("Default replace patterns file: " + Sanitizer.SanitizerReplacePatternsFile);
-    Console.WriteLine("File path over " + Sanitizer.MaxPosixNameLength + " characters, will be cut off.");
+    Console.WriteLine("Default settings file: " + SanitizerConstants.SanitizerSettingsFile);
+    Console.WriteLine("Default replace patterns file: " + SanitizerConstants.SanitizerReplacePatternsFile);
+    Console.WriteLine("File path over " + SanitizerConstants.MaxPosixNameLength + " characters, will be cut off.");
     
     Console.WriteLine("\nUsage:");
     Console.WriteLine("  FilenameSanitizerCli                     - Sanitize all filenames in folder - in current directory.");
