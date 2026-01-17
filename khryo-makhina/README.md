@@ -8,3 +8,4 @@
 khryo-makhina/khryo-makhina is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 You can click the Preview link to take a look at your changes.
 --->
+Provenance: This directory was vendored into the parent repository from https://github.com/khryo-makhina/public.git. The original submodule history is preserved on the branch `backup/khryo-makhina-submodule` in this repository.
