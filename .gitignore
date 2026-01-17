@@ -1,1 +1,8 @@
 FilenameSanitizer/FilenameSanitizerCli/Properties/launchSettings.json
+/ai_offline/ollama_with_open_webui_n8n/open_webui_data/cache
+/ai_offline/ollama_with_open_webui/open_webui_data/cache
+/ai_offline/ollama_with_open_webui/ollama_data/models
+/ai_offline/ollama_with_open_webui_n8n/ollama_data
+/ai_offline/ollama_with_open_webui/ollama_data
+/ai_offline/ollama_with_open_webui_n8n/open_webui_data
+/.vscode
