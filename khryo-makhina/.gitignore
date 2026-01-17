@@ -1,6 +1,0 @@
-﻿# Ignore build artifacts and IDE folders
-**/obj/
-**/bin/
-*.user
-.vs/
-node_modules/
