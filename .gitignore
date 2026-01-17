@@ -4,3 +4,4 @@
 *.user
 .vs/
 node_modules/
+*.code-workspace
