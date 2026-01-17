@@ -1,3 +1,3 @@
 ﻿[submodule "khryo-makhina"]
-path = khryo-makhina
-url = ./khryo-makhina
+	path = khryo-makhina
+	url = https://github.com/khryo-makhina/public.git
