@@ -17,7 +17,7 @@ public class TranslationEntryList
                 c.EnglishName.Equals(languageName, StringComparison.OrdinalIgnoreCase));
 
         if (neutral == null)
-            return null;
+            return CultureInfo.CurrentCulture; // Fallback to current culture if not found
 
         // Step 2: Convert neutral → specific culture using CreateSpecificCulture
         // This uses the machine's default mapping (e.g., "en" → "en-GB" on UK systems)
@@ -72,7 +72,11 @@ public class TranslationEntryList
 
     public TranslationEntry Find(string englishText, string targetLanguage)
     {
-        return Entries.FirstOrDefault(e => e.SourceText == englishText && e.TargetLanguage == targetLanguage);
+        if (Entries == null || string.IsNullOrEmpty(englishText) || string.IsNullOrEmpty(targetLanguage))
+        {
+            return TranslationEntry.Empty;
+        }    
+        return Entries.FirstOrDefault(e => e.SourceText == englishText && e.TargetLanguage == targetLanguage) ?? TranslationEntry.Empty;
     }
 
     public void AddRange(IEnumerable<TranslationEntry> entries)
