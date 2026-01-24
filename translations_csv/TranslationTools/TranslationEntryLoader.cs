@@ -10,19 +10,8 @@ public class TranslationEntryLoader
     public static List<TranslationEntry> LoadTranslationEntriesFromCsv(string csvFilePath) 
     {
         var translationFinder = new TranslationTools.TranslationsFinder();
-        string translationFilepath = String.Empty;
-        bool isTranslationEntryTranslations = csvFilePath.Contains("translations_csv");
-        if(isTranslationEntryTranslations)
-        {          
-            Console.WriteLine("Using translations CSV file found at: " + translationFilepath);
-            translationFilepath = translationFinder.FindTranslationsCsvFilepath();
-        }
-        else
-        {
-            Console.WriteLine("Using translations CSV file at: " + translationFilepath);
-            translationFilepath = csvFilePath;
-        }
-        
+        string translationFilepath = translationFinder.FindTranslationsCsvFilepath(csvFilePath);
+                
         string[] translationLines = translationFinder.GetTranslationsLines(translationFilepath);
 
         if (translationLines.Length == 0)

@@ -20,8 +20,8 @@ public class TranslationsParser
             return entries;
         }   
 
-        bool isTranslationEntryTranslations
-          = csvLines[0].Contains("Source Language") && csvLines[0].Contains("Target Language");
+        bool isTranslationEntryTranslations = csvLines.Length > 2 
+          && csvLines[0].StartsWith("English,") && csvLines[1].StartsWith("Finnish,");
 
         int FinnishTextColumnIndex = 0;
         int EnglishTextColumnIndex = 1;
@@ -46,7 +46,7 @@ public class TranslationsParser
 
         foreach (var line in csvLines)
         {
-            if(line.StartsWith("[Source Language]") || line.StartsWith("[Finnish]") || line.StartsWith("[English]")|| line.StartsWith("[Vietnamese]"))
+            if(line.StartsWith("[Source Language") || line.StartsWith("[Target Language"))
             {
                 // Skip header line
                 continue;
