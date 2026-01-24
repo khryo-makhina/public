@@ -5,3 +5,4 @@
 .vs/
 node_modules/
 *.code-workspace
+translations_csv/TextToSpeechApp/Properties/launchSettings.json

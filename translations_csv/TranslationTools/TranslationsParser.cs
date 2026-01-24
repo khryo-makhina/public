@@ -1,4 +1,6 @@
 using System.Text;
+using System.Collections.Generic;
+
 namespace TranslationTools;
 
 /// <summary>
@@ -11,36 +13,59 @@ public class TranslationsParser
     /// </summary>
     /// <param name="csvLines">Raw CSV lines</param>
     /// <returns>A list of TranslationEntry objects</returns>
-    public List<TranslationEntry> ParseTranslationsCsvLines(string[] csvLines)
+    public TranslationEntryList ParseTranslationsCsvLines(string[] csvLines)
     {
-        var entries = new List<TranslationEntry>();
+        var entryList = new TranslationEntryList();
 
         if(csvLines.Length == 0)
         {
-            return entries;
+            return entryList;
         }   
 
         bool isTranslationEntryTranslations = csvLines.Length > 2 
-          && csvLines[0].StartsWith("English,") && csvLines[1].StartsWith("Finnish,");
+          && csvLines[0].Contains("Source Language,") && csvLines[0].Contains("Target Language,");
 
-        int FinnishTextColumnIndex = 0;
-        int EnglishTextColumnIndex = 1;
+        int SourceTextColumnIndex = 0;
+        int TargetTextColumnIndex = 1;
         if (isTranslationEntryTranslations)
         {
-            Console.WriteLine("Parsing translation entry CSV lines ...");
+            Console.WriteLine("Parsing " + nameof(TranslationEntry) + " CSV lines ...");
+            entryList.SourceLanguage = csvLines[0].Split(',')[0].Replace("Source Language,", "").Trim();
+            entryList.TargetLanguage = csvLines[0].Split(',')[2].Replace("Target Language,", "").Trim();    
+            Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
         }
         else
         {
             Console.WriteLine("Parsing value-pair CSV lines ...");
-            if(csvLines[0].StartsWith("[Finnish]") && csvLines[0].Contains("[English]"))
+            if(csvLines[0].StartsWith("[Target:") && csvLines[0].Contains("[Source:"))
             {
-                FinnishTextColumnIndex = 0;
-                EnglishTextColumnIndex = 1;
+                SourceTextColumnIndex = 1;
+                TargetTextColumnIndex = 0;
+                var sourceLanguage = csvLines[0].Split(',')[1].Replace("[Source:", "").Replace("]", "").Trim();
+                entryList.SourceLanguage = sourceLanguage;
+
+                var targetLanguage = csvLines[0].Split(',')[0].Replace("[Target:", "").Replace("]", "").Trim();
+                entryList.TargetLanguage = targetLanguage;    
+                Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
             }
-            else if(csvLines[0].StartsWith("[English]") && csvLines[0].Contains("[Finnish]"))
+            else if(csvLines[0].StartsWith("[Source:") && csvLines[0].Contains("[Target:"))
             {
-                EnglishTextColumnIndex = 0;
-                FinnishTextColumnIndex = 1;
+                SourceTextColumnIndex = 0;
+                TargetTextColumnIndex = 1;
+                var sourceLanguage = csvLines[0].Split(',')[0].Replace("[Source:", "").Replace("]", "").Trim();
+                entryList.SourceLanguage = sourceLanguage;
+                var targetLanguage = csvLines[0].Split(',')[1].Replace("[Target:", "").Replace("]", "").Trim();
+                entryList.TargetLanguage = targetLanguage;      
+                Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
+            }       
+             else if(csvLines[0].StartsWith("[Source:") && !csvLines[0].Contains("[Target:"))
+            {
+                SourceTextColumnIndex = 0;
+                TargetTextColumnIndex = 1;
+                var sourceLanguage = csvLines[0].Split(',')[0].Replace("[Source:", "").Replace("]", "").Trim();
+                entryList.SourceLanguage = sourceLanguage;
+                entryList.TargetLanguage = String.Empty;      
+                Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
             }                  
         }
 
@@ -56,12 +81,12 @@ public class TranslationsParser
             //Example: English,"among the monolith, sunk into the ground",Finnish,"maahan vajonneiden, megaliittien keskellä"
             if (columns.Length >= 4)
             {
-                var englishText = columns[1].Trim('"');
-                var finnishText = columns[3].Trim('"');
-                entries.Add(new TranslationEntry
+                var sourceText = columns[1].Trim('"');
+                var targetText = columns[3].Trim('"');
+                entryList.Add(new TranslationEntry
                 {
-                    EnglishText = englishText,
-                    FinnishText = finnishText
+                    SourceText = sourceText,
+                    TargetText = targetText
                 });
             }
             else
@@ -69,18 +94,18 @@ public class TranslationsParser
                 if (columns.Length >= 2)
                 {                    
                     //Example: "Hello, this is a sample.","Hei, tämä on esimerkki."
-                    string englishText = columns[EnglishTextColumnIndex].Trim('"');
-                    string finnishText = columns[FinnishTextColumnIndex].Trim('"');
+                    string sourceText = columns[SourceTextColumnIndex].Trim('"');
+                    string targetText = columns[TargetTextColumnIndex].Trim('"');
 
-                    entries.Add(new TranslationEntry
+                    entryList.Add(new TranslationEntry
                     {
-                        EnglishText = englishText,
-                        FinnishText = finnishText
+                        SourceText = sourceText,
+                        TargetText = targetText
                     });
                 }
             }
         }
-        return entries;
+        return entryList;
     }
 
     public static List<string> SplitCsvLine(string line)

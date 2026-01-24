@@ -1,7 +1,7 @@
-[Source: Finnish],[Target: English]
+[Target: Finnish],[Source: English]
 aaltosulkeet {},curly brackets {}
 "aikaleima, timestamppi",timestamp
-ajaa koodia/testeja,to run the code/tests
+ajaa koodia/testejä,to run the code/tests
 ajoaika,run time
 ajonaikainen,occurring during run-time (esim. ajonaikainen virhe)
 ajuri,driver
@@ -75,7 +75,7 @@ päivittää uuteen versioon,to update to the new version
 palikka,"algorithm part, block"
 palkki/pylväskaavio,bar/column chart
 parsinta,parsing
-pikanäppäin ,shortcut
+pikanäppäin,shortcut
 pilkku,"comma ,"
 pistekaavio,scatter chart
 pito,retention

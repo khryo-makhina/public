@@ -13,7 +13,7 @@ public class TranslationEntry
     /// <summary>
     /// English text to be translated.
     /// </summary>
-    public string EnglishText { get; set; }
+    public string SourceText { get; set; }
 
     /// <summary>
     /// Target language code (e.g., "fi-FI")
@@ -23,5 +23,5 @@ public class TranslationEntry
     /// <summary>
     /// Finnish translated text.
     /// </summary>
-    public string FinnishText { get; set; }
+    public string TargetText { get; set; }
 }

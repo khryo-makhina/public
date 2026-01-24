@@ -4,6 +4,10 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AddEntryApp", "AddEntryApp\AddEntryApp.csproj", "{B39C9248-7567-99C5-A953-1253ABF0E7D8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TranslationTools", "TranslationTools\TranslationTools.csproj", "{B13687EF-6B82-DF35-D205-4FF5C5C68CD6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TextToSpeechApp", "TextToSpeechApp\TextToSpeechApp.csproj", "{BCE36928-C4FF-69D4-E46E-25BEEFB64FD8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,6 +18,14 @@ Global
 		{B39C9248-7567-99C5-A953-1253ABF0E7D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B39C9248-7567-99C5-A953-1253ABF0E7D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B39C9248-7567-99C5-A953-1253ABF0E7D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B13687EF-6B82-DF35-D205-4FF5C5C68CD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B13687EF-6B82-DF35-D205-4FF5C5C68CD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B13687EF-6B82-DF35-D205-4FF5C5C68CD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B13687EF-6B82-DF35-D205-4FF5C5C68CD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCE36928-C4FF-69D4-E46E-25BEEFB64FD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCE36928-C4FF-69D4-E46E-25BEEFB64FD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCE36928-C4FF-69D4-E46E-25BEEFB64FD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCE36928-C4FF-69D4-E46E-25BEEFB64FD8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

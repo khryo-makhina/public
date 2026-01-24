@@ -7,7 +7,7 @@ namespace TranslationTools;
 
 public class TranslationEntryLoader 
 {
-    public static List<TranslationEntry> LoadTranslationEntriesFromCsv(string csvFilePath) 
+    public static TranslationEntryList LoadTranslationEntriesFromCsv(string csvFilePath) 
     {
         var translationFinder = new TranslationTools.TranslationsFinder();
         string translationFilepath = translationFinder.FindTranslationsCsvFilepath(csvFilePath);
@@ -18,7 +18,7 @@ public class TranslationEntryLoader
         {
             Console.WriteLine("No " + nameof(TranslationTools.TranslationEntry) + " lines found in the CSV file.");
             
-            return new List<TranslationEntry>();
+            return new TranslationEntryList();
         }
         Console.WriteLine($"Loaded {translationLines.Length} lines from translations CSV file.");
 
