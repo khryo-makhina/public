@@ -9,9 +9,25 @@ public class TranslationsFinder
     /// Finds the translations.csv file path by searching parent directories or using settings.
     /// </summary>
     /// <returns>Full path to the translations.csv file</returns>
-    public string FindTranslationsCsvFilepath()
+    public string FindTranslationsCsvFilepath(string csvFilePath = "")
     {
-        var translationFilepath = string.Empty;
+        bool isTranslationEntryTranslations = String.IsNullOrEmpty(csvFilePath) || csvFilePath.Contains("translations_csv");
+        if(!isTranslationEntryTranslations)
+        {                                 
+            Console.WriteLine("Using translations CSV file at: " + csvFilePath);
+            return csvFilePath;
+        }
+
+        Console.WriteLine("Resolving translations CSV file path from settings ...");
+        var translationFilepath = GetTranslationFilePathFromSettings();
+        if (!String.IsNullOrEmpty(translationFilepath))
+        {
+            return translationFilepath;
+        }
+        
+        Console.WriteLine("Could not determine translations.csv file path from settings.");
+        Console.WriteLine("Resolving translations CSV file path from parent directories...");
+
         // Try to find the repository folder named "translations_csv" by climbing parents
         Console.WriteLine("Searching for translations_csv folder...");
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -29,14 +45,7 @@ public class TranslationsFinder
         {
             Console.WriteLine($"Found translations.csv at: {translationFilepath}");
             return translationFilepath; ;
-        }
-
-        translationFilepath = GetTranslationFilePathFromSettings();
-        if (!String.IsNullOrEmpty(translationFilepath))
-        {
-            return translationFilepath;
-        }
-        Console.WriteLine("Could not determine translations.csv file path from settings.");
+        }        
 
         // Fallback to previous behavior (parent of current working dir)
         var fallbackPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "translations.csv"));

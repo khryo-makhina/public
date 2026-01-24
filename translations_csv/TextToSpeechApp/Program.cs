@@ -7,24 +7,42 @@ using TextToSpeechApp.TextToSpeechService;
 using var ttsEn = new TextToSpeechService("en-GB");
 using var ttsFi = new TextToSpeechService("fi-FI");
 
-await ttsEn.SpeakAsync("Hello, this is the English voice.");
-await ttsFi.SpeakAsync("Hei, tämä on suomenkielinen ääni.");
+//await ttsEn.SpeakAsync("Hello, this is the English voice.");
+//await ttsFi.SpeakAsync("Hei, tämä on suomenkielinen ääni.");
 
-var translationFinder = new TranslationTools.TranslationsFinder();
-var translationFilepath = translationFinder.FindTranslationsCsvFilepath();
-string[] translationLines = translationFinder.GetTranslationsLines(translationFilepath);
+List<TranslationEntry> translationEntryList = new List<TranslationEntry>();
 
-if (translationLines.Length == 0)
+if (args.Length > 0)
 {
-    Console.WriteLine("No translation lines found in the CSV file.");
-    return;
+    Console.WriteLine("Arguments passed. Processing...");
+    foreach (var arg in args)
+    {
+        Console.WriteLine(arg);
+
+        if (arg == "--help" || arg == "-h")
+        {
+            Console.WriteLine("Usage: TextToSpeechApp [path to translations CSV file]"); 
+            return;   
+        }
+
+        if (arg.Contains("csv_files"))
+        {
+            Console.WriteLine("Loading CSV key-value pairs from: " + arg);
+            translationEntryList = TranslationEntryLoader.LoadTranslationEntriesFromCsv(arg);            
+        }
+        else
+        {
+            Console.WriteLine("Unknown argument: " + arg);
+            return;
+        }
+    }    
 }
-Console.WriteLine($"Loaded {translationLines.Length} lines from translations CSV file.");
-
-var translationsParser = new TranslationTools.TranslationsParser();
-var translationEntryList = translationsParser.ParseTranslationsCsvLines(translationLines);
-
-Console.WriteLine($"Loaded {translationEntryList.Count} translation entries.");
+else
+{
+    Console.WriteLine("No arguments passed. Using default translations CSV file.");
+    Console.WriteLine("Loading CSV key-value pairs from: " + "translations_csv/translations.csv");
+    translationEntryList = TranslationEntryLoader.LoadTranslationEntriesFromCsv("translations_csv/translations.csv");
+}
 
 Console.WriteLine("Starting text-to-speech for translation entries. Press Ctrl+C to stop.");
 // Speak random entries in either English or Finnish
