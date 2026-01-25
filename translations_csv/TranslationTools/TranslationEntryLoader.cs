@@ -7,22 +7,22 @@ namespace TranslationTools;
 
 public class TranslationEntryLoader 
 {
-    public static TranslationEntryList LoadTranslationEntriesFromCsv(string csvFilePath) 
+    public static TranslationEntryList LoadTranslationEntriesFromCsv(string csvFilePath, int startinglineNumber = -1) 
     {
-        var translationFinder = new TranslationTools.TranslationsFinder();
+        var translationFinder = new TranslationsFinder();
         string translationFilepath = translationFinder.FindTranslationsCsvFilepath(csvFilePath);
                 
-        string[] translationLines = translationFinder.GetTranslationsLines(translationFilepath);
+        string[] translationLines = translationFinder.GetTranslationsLines(translationFilepath, startinglineNumber);
 
         if (translationLines.Length == 0)
         {
-            Console.WriteLine("No " + nameof(TranslationTools.TranslationEntry) + " lines found in the CSV file.");
+            Console.WriteLine("No " + nameof(TranslationEntry) + " lines found in the CSV file.");
             
             return new TranslationEntryList();
         }
         Console.WriteLine($"Loaded {translationLines.Length} lines from translations CSV file.");
 
-        var translationsParser = new TranslationTools.TranslationsParser();
+        var translationsParser = new TranslationsParser();
         var translationEntryList = translationsParser.ParseTranslationsCsvLines(translationLines);
 
         Console.WriteLine($"Loaded {translationEntryList.Count} translation entries.");

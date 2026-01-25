@@ -15,8 +15,8 @@ public class TranslationsFinder
     public string FindTranslationsCsvFilepath(string csvFilePath = "")
     {
         bool isTranslationEntryTranslations = String.IsNullOrEmpty(csvFilePath) || csvFilePath.Contains(TranslationCsvFilename);
-        if(!isTranslationEntryTranslations)
-        {                                 
+        if (!isTranslationEntryTranslations)
+        {
             Console.WriteLine("Using " + TranslationCsvFilename + " file at: " + csvFilePath);
             return csvFilePath;
         }
@@ -27,7 +27,7 @@ public class TranslationsFinder
         {
             return translationFilepath;
         }
-                
+
         Console.WriteLine($"Could not determine {TranslationCsvFilename} file path from settings.");
         Console.WriteLine($"Resolving {TranslationCsvFilename} file path from parent directories...");
 
@@ -48,7 +48,7 @@ public class TranslationsFinder
         {
             Console.WriteLine($"Found {TranslationCsvFilename} at: {translationFilepath}");
             return translationFilepath; ;
-        }        
+        }
 
         // Fallback to previous behavior (parent of current working dir)
         var fallbackPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", TranslationCsvFilename));
@@ -78,8 +78,8 @@ public class TranslationsFinder
             var pathValue = json.Substring(startIndex, endIndex - startIndex).Trim().Trim('"');
             string tidyPath = Path.GetFullPath(pathValue);
             if (!string.IsNullOrWhiteSpace(tidyPath))
-            { 
-                return tidyPath; 
+            {
+                return tidyPath;
             }
         }
 
@@ -91,14 +91,23 @@ public class TranslationsFinder
     /// </summary>
     /// <param name="translationFilepath"></param>
     /// <returns>A list of strings representing the lines in the CSV file</returns>
-    public string[] GetTranslationsLines(string translationFilepath)
+    public string[] GetTranslationsLines(string translationFilepath, int startinglineNumber = -1)
     {
         if (!File.Exists(translationFilepath))
         {
             return Array.Empty<string>();
         }
 
-        return File.ReadAllLines(translationFilepath);
+        IEnumerable<string> array;
+        if (startinglineNumber > 0)
+        {
+            array = File.ReadAllLines(translationFilepath).Skip(startinglineNumber);
+        }
+        else
+        {
+            array = File.ReadAllLines(translationFilepath);
+        }
+        return [.. array];//to array
     }
 }
 
