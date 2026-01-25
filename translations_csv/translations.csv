@@ -273,7 +273,7 @@ English,cameo,Finnish,kameo
 English,candelabras,Finnish,kyntteliköt
 English,cane,Finnish,nyrkki/käpy
 English,canker,Finnish,haava
-English,canteen,Finnish,ruokala
+English,canteen,Finnish,ruokala/kanttiini/kenttäruokala/kenttäateria
 English,canter,Finnish,kenttäpullo
 English,cantle,Finnish,satulan selkämyksen takaosa
 English,caparison,Finnish,koristella
@@ -982,7 +982,8 @@ English,kiln,Finnish,polttouuni
 English,kilter,Finnish,tasapaino (idiomi: out of kilter = pois tolaltaan)
 English,kimeeri,Finnish,astride
 English,kirjava,Finnish,pebble
-English,kirjolohi,Finnish,a knout
+English,from the knout,Finnish,ruoskaniskusta
+English,knout,Finnish,ruoska/piiska
 English,kite,Finnish,kovaotteiset
 English,kith and kin,Finnish,sukulaiset ja ystävät 
 English,kitsch,Finnish,bonking
@@ -1126,7 +1127,7 @@ English,mollified,Finnish,lievitetty/tyynnytetty
 English,mollify,Finnish,lievittää/tyynyttää
 English,monastic,Finnish,luostari-
 English,mongrel,Finnish,sekarotuinen koira/piski
-English,moor,Finnish,nummi/suo (kontekstista riippuen - avoin, karu maasto)
+English,moor,Finnish,"nummi/suo (kontekstista riippuen - avoin, karu maasto)"
 English,moorland,Finnish,"moorit (avoin, karu maasto)"
 English,moot,Finnish,keskustella
 English,morass,Finnish,suomaa
@@ -1909,3 +1910,26 @@ English,zephyr,Finnish,lempeä tuuli
 English,zest,Finnish,innostus
 English,zodiac,Finnish,eläinradan merkki
 English,zymurgy,Finnish,sakkafysiikka (hiivan ja käymisprosessien tutkimus)
+"English","conceit","Finnish","ylpeys"
+"English","rustler","Finnish","karkurit"
+"English","flailed","Finnish","heilutti jäsentään"
+"English","loins","Finnish","kupeet/lantio"
+"English","elucidation","Finnish","selvennys"
+"English","trudging","Finnish","kävely/tarpominen"
+"English","beckoned","Finnish","käski" 
+"English","candour","Finnish","rehellisyys"
+"English","aforementioned","Finnish","edellä mainittu"
+"English","candour","Finnish","rehellisyys"
+"English","evinced","Finnish","näkyvissä oleva"
+
+"English","confabulations","Finnish","keskustelut/puheenvaihdot"
+"English","exasperated","Finnish","ärtyneet"
+"English","coiffure","Finnish","kampaus"
+"English","bouffant","Finnish","pumpullinen"
+"English","flightiness","Finnish","kepeys/kepeäpäinen"
+"English","distraught","Finnish","mielenvahingoittunut/levoton"
+"English","furtively","Finnish","salaisesti/piilossa"
+"English","reprimanded","Finnish","kärsitti"
+"English","intercede to","Finnish","puuttua/puolustaa"
+"English","milliner","Finnish","hattamestari"
+"English","grunted","Finnish","nörisee/grunisee"
