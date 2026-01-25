@@ -46,6 +46,16 @@ else
     translationEntryList = TranslationEntryLoader.LoadTranslationEntriesFromCsv("translations_csv/translations.csv");
 }
 
+var entriesCount = translationEntryList.Count;
+var entriesCountChars = entriesCount.ToString().Length;
+
+if (entriesCount == 0)
+{
+    Console.WriteLine("No translation entries found. Exiting.");
+    return;
+}
+
+
 Console.WriteLine("Starting text-to-speech for translation entries. Press Ctrl+C to stop.");
 
 bool isSingleLanguage = translationEntryList.IsSingleLanguage;
@@ -56,14 +66,39 @@ Console.WriteLine($"Target Language:  {translationEntryList.TargetLanguage}, Tar
 using var ttsSource = new TextToSpeechService(translationEntryList.SourceLanguageCultureName);
 using var ttsTarget = isSingleLanguage ? null : new TextToSpeechService(translationEntryList.TargetLanguageCultureName);
 
-// Speak random entries in either source language (e.g. English) and in target language (e.g. Finnish)
-var entriesCount = translationEntryList.Count;
-var entriesCountChars = entriesCount.ToString().Length;
+string textExitPrompt = "Press Escape to stop or Enter to pause for 10 seconds.";
+Console.WriteLine(textExitPrompt);
+await ttsSource.SpeakAsync(textExitPrompt);
 
+string textStartingRecitingLoop = "Reciting " + entriesCount + " entries, randomly.";
+Console.WriteLine(textStartingRecitingLoop);
+await ttsSource.SpeakAsync(textStartingRecitingLoop);
+
+// Speak random entries in either source language (e.g. English) and in target language (e.g. Finnish)
 var randomizer = new Random(entriesCount);
 int i = 0;
 for (i = 0; i < entriesCount; i++)
 {
+    // Check if a key has been pressed
+    if (Console.KeyAvailable)
+    {
+        ConsoleKeyInfo key = Console.ReadKey(true);
+
+        if (key.Key == ConsoleKey.Escape)
+        {
+            Console.WriteLine("Esc pressed — stopping speech. Exiting.");
+            break;
+        }
+        else if (key.Key == ConsoleKey.Enter)
+        {
+            Console.WriteLine("Enter pressed — pausing for 10 seconds.");
+            System.Threading.Thread.Sleep(10000);
+        }
+    }
+
+    // avoid burning CPU
+    System.Threading.Thread.Sleep(50);
+
     var randomIndex = randomizer.Next(0, entriesCount - 1);
     var entry = translationEntryList[randomIndex];
     var padding = (i + 1).ToString().PadLeft(entriesCountChars, '0');
