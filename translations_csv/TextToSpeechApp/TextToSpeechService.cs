@@ -5,7 +5,7 @@ using Windows.Media.SpeechSynthesis;
 using Windows.Media.Playback;
 using Windows.Media.Core;
 
-namespace TextToSpeechApp.TextToSpeechService;
+namespace TextToSpeechApp;
 
 /// <summary>
 /// Provides text-to-speech functionality using specified language voices.
@@ -81,5 +81,6 @@ public class TextToSpeechService : IDisposable
     {
         _player?.Dispose();
         _synth?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
