@@ -6,7 +6,7 @@
 public class TranslationsFinder
 {
     private const string SettingsJsonFilename = "settings.json";
-    private const string TranslationCsvFilename = "translations_csv";
+    private const string TranslationCsvFilename = "translations.csv";
 
     /// <summary>
     /// Finds the .csv file path by searching parent directories or using settings.
@@ -79,7 +79,7 @@ public class TranslationsFinder
             string tidyPath = Path.GetFullPath(pathValue);
             if (!string.IsNullOrWhiteSpace(tidyPath))
             { 
-                return pathValue; 
+                return tidyPath; 
             }
         }
 
