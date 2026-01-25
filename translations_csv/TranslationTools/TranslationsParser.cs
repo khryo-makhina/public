@@ -17,12 +17,12 @@ public class TranslationsParser
     {
         var entryList = new TranslationEntryList();
 
-        if(csvLines.Length == 0)
+        if (csvLines.Length == 0)
         {
             return entryList;
-        }   
+        }
 
-        bool isTranslationEntryTranslations = csvLines.Length > 2 
+        bool isTranslationEntryTranslations = csvLines.Length > 2
           && csvLines[0].Contains("Source Language,") && csvLines[0].Contains("Target Language,");
 
         int SourceTextColumnIndex = 0;
@@ -31,7 +31,7 @@ public class TranslationsParser
         {
             Console.WriteLine("Parsing " + nameof(TranslationEntry) + " CSV lines ...");
             entryList.SourceLanguage = csvLines[0].Split(',')[0].Replace("Source Language,", "").Trim();
-            entryList.TargetLanguage = csvLines[0].Split(',')[2].Replace("Target Language,", "").Trim();    
+            entryList.TargetLanguage = csvLines[0].Split(',')[2].Replace("Target Language,", "").Trim();
             Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
         }
         else
@@ -46,7 +46,7 @@ public class TranslationsParser
                 entryList.SourceLanguage = sourceLanguage;
 
                 var targetLanguage = csvLines[0].Split(',')[0].Replace("[Target:", "").Replace("]", "").Trim();
-                entryList.TargetLanguage = targetLanguage;    
+                entryList.TargetLanguage = targetLanguage;
                 Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
             }
             else
@@ -80,7 +80,7 @@ public class TranslationsParser
 
         foreach (var line in csvLines)
         {
-            if(line.StartsWith("[Source Language") || line.StartsWith("[Target Language"))
+            if (line.StartsWith("[Source Language") || line.StartsWith("[Target Language"))
             {
                 // Skip header line
                 continue;
@@ -101,7 +101,7 @@ public class TranslationsParser
             else
             {
                 if (columns.Length >= 2)
-                {                    
+                {
                     //Example: "Hello, this is a sample.","Hei, tämä on esimerkki."
                     string sourceText = columns[SourceTextColumnIndex].Trim('"');
                     string targetText = columns[TargetTextColumnIndex].Trim('"');
@@ -117,45 +117,56 @@ public class TranslationsParser
         return entryList;
     }
 
+    /// <summary>
+    /// Splits a CSV line into individual fields, handling quoted fields and escaped quotes.
+    /// </summary>
+    /// <param name="line">The CSV line to parse</param>
+    /// <returns>A list of strings representing the CSV fields</returns>
+    /// <remarks>
+    /// This method properly handles:
+    /// - Fields enclosed in quotes
+    /// - Escaped quotes within fields (represented as "")
+    /// - Commas within quoted fields
+    /// - Empty fields
+    /// </remarks>
     public static List<string> SplitCsvLine(string line)
-{
-    var result = new List<string>();
-    var current = new StringBuilder();
-    bool inQuotes = false;
-
-    for (int i = 0; i < line.Length; i++)
     {
-        char c = line[i];
+        var result = new List<string>();
+        var current = new StringBuilder();
+        bool inQuotes = false;
+        int position = 0;
 
-        if (c == '"')
+        foreach (char c in line)
         {
-            // Toggle quoted state, unless it's an escaped quote ("")
-            if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+            if (c == '"')
             {
-                current.Append('"'); // escaped quote
-                i++;                 // skip next quote
+                // Toggle quoted state, unless it's an escaped quote ("")
+                if (inQuotes && position + 1 < line.Length && line[position + 1] == '"')
+                {
+                    current.Append('"'); // escaped quote
+                    position++;         // skip next quote
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                }
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                // End of field
+                result.Add(current.ToString());
+                current.Clear();
             }
             else
             {
-                inQuotes = !inQuotes;
+                current.Append(c);
             }
+            position++;
         }
-        else if (c == ',' && !inQuotes)
-        {
-            // End of field
-            result.Add(current.ToString());
-            current.Clear();
-        }
-        else
-        {
-            current.Append(c);
-        }
+
+        // Add last field
+        result.Add(current.ToString());
+
+        return result;
     }
-
-    // Add last field
-    result.Add(current.ToString());
-
-    return result;
-}
-
 }
