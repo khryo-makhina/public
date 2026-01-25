@@ -37,7 +37,8 @@ public class TranslationsParser
         else
         {
             Console.WriteLine("Parsing value-pair CSV lines ...");
-            if(csvLines[0].StartsWith("[Target:") && csvLines[0].Contains("[Source:"))
+            bool isTwoColumnsTargetFirst = csvLines[0].StartsWith("[Target:") && csvLines[0].Contains("[Source:");
+            if (isTwoColumnsTargetFirst)
             {
                 SourceTextColumnIndex = 1;
                 TargetTextColumnIndex = 0;
@@ -48,25 +49,33 @@ public class TranslationsParser
                 entryList.TargetLanguage = targetLanguage;    
                 Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
             }
-            else if(csvLines[0].StartsWith("[Source:") && csvLines[0].Contains("[Target:"))
+            else
             {
-                SourceTextColumnIndex = 0;
-                TargetTextColumnIndex = 1;
-                var sourceLanguage = csvLines[0].Split(',')[0].Replace("[Source:", "").Replace("]", "").Trim();
-                entryList.SourceLanguage = sourceLanguage;
-                var targetLanguage = csvLines[0].Split(',')[1].Replace("[Target:", "").Replace("]", "").Trim();
-                entryList.TargetLanguage = targetLanguage;      
-                Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
-            }       
-             else if(csvLines[0].StartsWith("[Source:") && !csvLines[0].Contains("[Target:"))
-            {
-                SourceTextColumnIndex = 0;
-                TargetTextColumnIndex = 1;
-                var sourceLanguage = csvLines[0].Split(',')[0].Replace("[Source:", "").Replace("]", "").Trim();
-                entryList.SourceLanguage = sourceLanguage;
-                entryList.TargetLanguage = String.Empty;      
-                Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
-            }                  
+                var isTwoColumnsSourceFirst = csvLines[0].StartsWith("[Source:") && csvLines[0].Contains("[Target:");
+                if (isTwoColumnsSourceFirst)
+                {
+                    SourceTextColumnIndex = 0;
+                    TargetTextColumnIndex = 1;
+                    var sourceLanguage = csvLines[0].Split(',')[0].Replace("[Source:", "").Replace("]", "").Trim();
+                    entryList.SourceLanguage = sourceLanguage;
+                    var targetLanguage = csvLines[0].Split(',')[1].Replace("[Target:", "").Replace("]", "").Trim();
+                    entryList.TargetLanguage = targetLanguage;
+                    Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
+                }
+                else
+                {
+                    var isSingleColumn = csvLines[0].StartsWith("[Source:") && !csvLines[0].Contains("[Target:");
+                    if (isSingleColumn)
+                    {
+                        SourceTextColumnIndex = 0;
+                        TargetTextColumnIndex = 1;
+                        var sourceLanguage = csvLines[0].Split(',')[0].Replace("[Source:", "").Replace("]", "").Trim();
+                        entryList.SourceLanguage = sourceLanguage;
+                        entryList.TargetLanguage = String.Empty;
+                        Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
+                    }
+                }
+            }
         }
 
         foreach (var line in csvLines)
