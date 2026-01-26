@@ -25,11 +25,27 @@ public class TranslationsFinder
         var translationFilepath = GetTranslationFilePathFromSettings();
         if (!String.IsNullOrEmpty(translationFilepath))
         {
-            return translationFilepath;
+            if(!File.Exists(translationFilepath))
+            {
+                Console.WriteLine($"Warning: The translation file path from settings does not exist: {translationFilepath}");
+            }
+            else
+            {
+                Console.WriteLine($"Using {TranslationCsvFilename} file at: {translationFilepath}");
+                return translationFilepath;
+            }            
         }
 
         Console.WriteLine($"Could not determine {TranslationCsvFilename} file path from settings.");
         Console.WriteLine($"Resolving {TranslationCsvFilename} file path from parent directories...");
+        
+        // Check current working directory first
+        if(File.Exists(TranslationCsvFilename))
+        {
+            translationFilepath = Path.GetFullPath(TranslationCsvFilename);
+            Console.WriteLine($"Found {TranslationCsvFilename} in current working directory at: {translationFilepath}");
+            return translationFilepath;
+        }
 
         // Try to find the repository folder named "translations_csv" by climbing parents
         Console.WriteLine($"Searching for of folder of file {TranslationCsvFilename} ...");
@@ -46,14 +62,29 @@ public class TranslationsFinder
 
         if (!String.IsNullOrEmpty(translationFilepath))
         {
-            Console.WriteLine($"Found {TranslationCsvFilename} at: {translationFilepath}");
-            return translationFilepath; ;
+            if(!File.Exists(translationFilepath))
+            {
+                Console.WriteLine($"Warning: The found translation file path does not exist: {translationFilepath}");
+            }   
+            else
+            {   
+                Console.WriteLine($"Found {TranslationCsvFilename} at: {translationFilepath}");
+                return translationFilepath; 
+            }
         }
 
         // Fallback to previous behavior (parent of current working dir)
         var fallbackPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", TranslationCsvFilename));
-        Console.WriteLine($"Falling back to: {fallbackPath}");
-        return fallbackPath;
+        if(!File.Exists(fallbackPath))
+        {
+            Console.WriteLine($"Warning: The fallback translation file path does not exist: {fallbackPath}");
+            return String.Empty;
+        }   
+        else
+        {   
+            Console.WriteLine($"Using fallback {TranslationCsvFilename} file at: {fallbackPath}");
+            return fallbackPath; 
+        }        
     }
 
     /// <summary>
@@ -66,22 +97,34 @@ public class TranslationsFinder
         bool settingsJsonExists = File.Exists(settingsPath);
         if (!settingsJsonExists)
         {
+            Console.WriteLine($"Settings file not found at: {settingsPath}");
             return String.Empty;
         }
 
         var json = File.ReadAllText(settingsPath);
         var startIndex = json.IndexOf("\"translation_filepath\"", StringComparison.OrdinalIgnoreCase);
-        if (startIndex >= 0)
+        if (startIndex == -1)
         {
-            startIndex = json.IndexOf(":", startIndex) + 1;
-            var endIndex = json.IndexOfAny(new[] { ',', '}', '\n', '\r' }, startIndex);
-            var pathValue = json.Substring(startIndex, endIndex - startIndex).Trim().Trim('"');
-            string tidyPath = Path.GetFullPath(pathValue);
-            if (!string.IsNullOrWhiteSpace(tidyPath))
-            {
-                return tidyPath;
-            }
+            Console.WriteLine($"Translation file path entry not found in settings.");
+            return String.Empty;
+        }   
+        
+        startIndex = json.IndexOf(":", startIndex) + 1;
+        var endIndex = json.IndexOfAny(new[] { ',', '}', '\n', '\r' }, startIndex);
+        var pathValue = json.Substring(startIndex, endIndex - startIndex).Trim().Trim('"');
+
+        if(string.IsNullOrWhiteSpace(pathValue))
+        {
+            Console.WriteLine($"Translation file path entry is empty in settings.");
+            return String.Empty;
         }
+        
+        string tidyPath = Path.GetFullPath(pathValue);
+        if (!string.IsNullOrWhiteSpace(tidyPath))
+        {
+            Console.WriteLine($"Translation file path found in settings: {tidyPath}");
+            return tidyPath;
+        }        
 
         return String.Empty;
     }

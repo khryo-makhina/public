@@ -1,6 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
+	  <Content Include="settings.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Include="..\translations.csv" Link="translations.csv" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\TranslationTools\TranslationTools.csproj" />
 	</ItemGroup>
   
