@@ -1,0 +1,74 @@
+# Legacy Compose file (no `device_requests`) for older docker-compose compatibility
+services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - G:/Ollama_models:/root/.ollama/models
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - OLLAMA_NO_VERIFY=true
+      - OLLAMA_KEEP_ALIVE=30m
+    runtime: nvidia
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+    networks:
+      - ai_network
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080"
+    restart: unless-stopped
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY=your_secure_key_here
+    volumes:
+      - open_webui_data:/app/backend/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - ollama
+    networks:
+      - ai_network
+
+  # Helper service: `ollama-cli` — lightweight helper container that mounts Ollama data/models.
+  # Use to run one-off `ollama` CLI commands or open a shell without affecting the main `ollama` service.
+  # Example: `docker exec -it ollama_with_open_webui-ollama-cli-1 /bin/bash` or
+  # `docker exec -it ollama_with_open_webui-ollama-cli-1 ollama list`.
+  # It uses `tail -f /dev/null` to stay running; use `docker compose run --rm ollama-cli ...` for ephemeral commands.
+  ollama-cli:
+    image: ollama/ollama
+    entrypoint: ["tail","-f","/dev/null"]
+    volumes:
+      - ollama_data:/root/.ollama
+      - G:/Ollama_models:/root/.ollama/models
+    networks:
+      - ai_network
+
+  ollama-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    container_name: ollama-proxy
+    ports:
+      - "8080:8080"
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    networks:
+      - ai_network
+
+networks:
+  ai_network:
+    driver: bridge
+    attachable: true
+
+volumes:
+  ollama_data:
+  open_webui_data:
