@@ -1,0 +1,1 @@
+This folder contains local user files that are GIT-ignored.
