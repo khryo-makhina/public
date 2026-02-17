@@ -80,6 +80,11 @@ docker run --gpus all --rm nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
  
  TLS / model-pull errors
  - If model downloads fail with TLS certificate errors in proxied/corporate networks, the Compose file sets `OLLAMA_NO_VERIFY=true` to skip cert verification. Use with caution.
+
+Running a model in Docker container, example: translategemma:12b
+ ```commandline
+ docker exec -it ollama ollama run translategemma:12b
+ ```
  
  Troubleshooting
  - If GPU tests fail: confirm `nvidia-smi` from WSL and that Docker Desktop shows GPU support enabled.
