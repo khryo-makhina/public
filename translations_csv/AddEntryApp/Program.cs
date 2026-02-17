@@ -77,7 +77,7 @@ while (true)
         continue;
     }
 
-    var line = $"\"English\",\"{EscapeCsv(input)}\",\"Finnish\",\"\"";
+    var line = $"\"English\",\"{EscapeCsv(input)}\",\"Finnish\",\"\",\"<Context Categorization Hashtags>\"";
     try
     {
         File.AppendAllText(translationFilepath, line + Environment.NewLine);
