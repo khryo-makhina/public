@@ -405,11 +405,12 @@ Unable to verify Ollama server version. Please ensure you have Ollama version 0.
 
 This message appears even when your proxy works perfectly and curl http://localhost:8080/v1/models returns valid data.
 
-✔️ Why this happens
+✔️ **Why this happens**
 The AI Toolkit tries to detect Ollama by calling:
 
-Code
+```Code
 GET /api/version
+```
 But:
 
 Your proxy does not implement /api/version
@@ -420,7 +421,7 @@ The Toolkit assumes “Ollama is missing or outdated” when it cannot verify th
 
 This is expected behavior when using Docker‑based Ollama.
 
-✔️ The important part
+✔️ **The important part**
 This warning does NOT prevent the Toolkit from using your custom OpenAI endpoint.  
 It only means the Toolkit cannot auto‑detect a native Ollama installation.
 
@@ -443,15 +444,17 @@ The Toolkit caches provider metadata in memory.
 3. Re‑add the custom endpoint
 Use:
 
-Code
+```Code
 Base URL: http://localhost:8080/v1
 API Key: (leave empty)
+```
 Click Save.
 
 If the proxy is reachable, the Toolkit will immediately call:
 
-Code
+```Code
 GET http://localhost:8080/v1/models
+```
 …and populate the model list.
 
 4. Open Copilot Chat → Model Picker
@@ -469,7 +472,7 @@ mistral:7b
 
 etc.
 
-🧪 If the warning still appears
+🧪 **If the warning still appears**
 This is normal.
 The Toolkit will always show the warning when:
 
@@ -481,20 +484,22 @@ The provider is not the real Ollama server
 
 But as long as:
 
-Code
+```script
 curl http://localhost:8080/v1/models
+```
 returns your models, the Toolkit will still use them.
 
 🧩 Optional: Add /api/version to the Proxy (to silence the warning)
 If you want to eliminate the warning entirely, add this to your proxy:
 
-js
+```js
 app.get("/api/version", (req, res) => {
   res.json({ version: "0.6.4" });
 });
+```
 This satisfies the Toolkit’s version check.
 
-🏁 Summary
+🏁 **Summary**
 The AI Toolkit warning is expected when using Docker‑based Ollama
 
 It does not prevent the Toolkit from using your proxy
