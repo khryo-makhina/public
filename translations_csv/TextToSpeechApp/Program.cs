@@ -1,16 +1,13 @@
 ﻿using System;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using TextToSpeechApp;
 using TranslationTools;
 
-//await ttsEn.SpeakAsync("Hello, this is the English voice.");
-//await ttsFi.SpeakAsync("Hei, tämä on suomenkielinen ääni.");
+Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-var entriesLoadedAmount = 0;
-
-var translationEntryList = new TranslationEntryList();
 int startinglineNumber = -1;
-
 if (args.Contains("--help") || args.Contains("-h"))
 {
     Console.WriteLine("Usage: TextToSpeechApp [path to translations CSV file]");
@@ -48,14 +45,23 @@ else
             }
             else if (arg.EndsWith(".csv"))
             {
-                if (!System.IO.File.Exists(arg))
+                
+                if (arg.Contains("csv_files"))
                 {
-                    Console.WriteLine("Error! CSV file not found: " + arg);
+                    csvFilePath = arg;
+                }
+                else
+                {
+                    csvFilePath = Path.Combine(Directory.GetCurrentDirectory(), "csv_files", arg);
+                }
+
+                if (!System.IO.File.Exists(csvFilePath))
+                {
+                    Console.WriteLine("Error! CSV file not found: " + csvFilePath);
                     return;
                 }
 
-                Console.WriteLine("CSV key-value pairs will be loaded from file path '" + csvFilePath + "'.");
-                csvFilePath = arg;
+                Console.WriteLine("CSV key-value pairs will be loaded from file path '" + csvFilePath + "'.");                
             }
             continue;
         }
@@ -71,8 +77,10 @@ else
 }
 
 Console.WriteLine("Loading CSV entries from '" + csvFilePath + "' ...");
-translationEntryList = TranslationEntryLoader.LoadTranslationEntriesFromCsv(csvFilePath, startinglineNumber);
-entriesLoadedAmount = translationEntryList.Count;
+var entryList = TranslationEntryLoader.LoadTranslationEntriesFromCsv(csvFilePath, startinglineNumber);
+ConsoleLogger.Logs.ForEach(log => Console.WriteLine(log.LogText));
+
+var entriesLoadedAmount = entryList.Count;
 Console.WriteLine("Loaded entries: " + entriesLoadedAmount);
 
 if (entriesLoadedAmount == 0)
@@ -83,21 +91,18 @@ if (entriesLoadedAmount == 0)
 
 Console.WriteLine("Starting text-to-speech for translation entries. Press Ctrl+C to stop.");
 
-bool isSingleLanguage = translationEntryList.IsSingleLanguage;
-
-Console.WriteLine($"Source Language:  {translationEntryList.SourceLanguage}, Source Language Culture Name: {translationEntryList.SourceLanguageCultureName}");
-Console.WriteLine($"Target Language:  {translationEntryList.TargetLanguage}, Target Language Culture Name: {translationEntryList.TargetLanguageCultureName}");
-
-using var ttsSource = new TextToSpeechService(translationEntryList.SourceLanguageCultureName);
-using var ttsTarget = isSingleLanguage ? null : new TextToSpeechService(translationEntryList.TargetLanguageCultureName);
-
 string textExitPrompt = "Press Escape to stop or Enter to pause for 10 seconds.";
 Console.WriteLine(textExitPrompt);
-await ttsSource.SpeakAsync(textExitPrompt);
+
+using var textToSpeechService = new TextToSpeechService(entryList.VoiceLanguages, entryList.Entries);
+
+
+//var ttsSource = translationEntryList.VoiceLanguages.First(x => x.LanguageCulture.Name == CultureInfo.CurrentCulture.Name).TextToSpeechVoice;
+//await ttsSource.SpeakAsync(textExitPrompt);
 
 string textStartingRecitingLoop = "Reciting " + entriesLoadedAmount + " entries, randomly.";
 Console.WriteLine(textStartingRecitingLoop);
-await ttsSource.SpeakAsync(textStartingRecitingLoop);
+await textToSpeechService.SpeakTextAsync(textStartingRecitingLoop);
 
 var entriesCountChars = entriesLoadedAmount.ToString().Length;
 
@@ -124,21 +129,14 @@ for (i = 0; i < entriesLoadedAmount; i++)
     }    
 
     var randomIndex = randomizer.Next(0, entriesLoadedAmount - 1);
-    var entry = translationEntryList[randomIndex];
+    TextEntryRow entryRow = entryList[randomIndex];
     var padding = (i + 1).ToString().PadLeft(entriesCountChars, '0');
 
-    if (!isSingleLanguage)    
-    { 
-        Console.WriteLine($"{padding} / {entriesLoadedAmount} :: {entry.SourceText} : {entry.TargetText}");
+    Console.WriteLine($"{padding} / {entriesLoadedAmount} :: {entryRow.GetAllAsString()}");
 
-        await ttsSource.SpeakAsync(entry.SourceText);
-        await ttsTarget.SpeakAsync(entry.TargetText);
-    }
-    else
+    foreach (var entry in entryRow)
     {
-        Console.WriteLine($"{padding} / {entriesLoadedAmount} :: {entry.SourceText}");
-
-        await ttsSource.SpeakAsync(entry.SourceText);
+        await textToSpeechService.SpeakEntryAsync(entry);
     }
 
     // avoid burning CPU

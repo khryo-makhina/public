@@ -1,6 +1,8 @@
 
 using System.IO;
 
+Console.OutputEncoding = System.Text.Encoding.UTF8;
+
 static string EscapeCsv(string s) => s?.Replace("\"", "\"\"") ?? string.Empty;
 var translationFinder = new TranslationTools.TranslationsFinder();
 var translationFilepath = translationFinder.FindTranslationsCsvFilepath();

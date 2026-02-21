@@ -16,16 +16,16 @@ public class TranslationEntryLoader
 
         if (translationLines.Length == 0)
         {
-            Console.WriteLine("No " + nameof(TranslationEntry) + " lines found in the CSV file.");
+            ConsoleLogger.WriteLine("No " + nameof(TextEntry) + " lines found in the CSV file.");
             
             return new TranslationEntryList();
         }
-        Console.WriteLine($"Loaded {translationLines.Length} lines from translations CSV file.");
+        ConsoleLogger.WriteLine($"Loaded {translationLines.Length} lines from translations CSV file - one is expected to be a header line.");
 
         var translationsParser = new TranslationsParser();
         var translationEntryList = translationsParser.ParseTranslationsCsvLines(translationLines);
 
-        Console.WriteLine($"Loaded {translationEntryList.Count} translation entries.");
+        ConsoleLogger.WriteLine($"Loaded {translationEntryList.Count} translation entries.");
         return translationEntryList;
     }
 }

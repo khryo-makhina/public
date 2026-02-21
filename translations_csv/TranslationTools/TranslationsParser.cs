@@ -22,99 +22,52 @@ public class TranslationsParser
             return entryList;
         }
 
-        bool isTranslationEntryTranslations = csvLines.Length > 2
-          && csvLines[0].Contains("Source Language,") && csvLines[0].Contains("Target Language,");
+        var headerLine = csvLines[0].Replace("\"", "").Replace("[", "").Replace("]", "").Replace(" ", "").Trim();
+        var headerColumns = headerLine.Split(',').Select(h => h.Trim()).ToArray();
 
-        int SourceTextColumnIndex = 0;
-        int TargetTextColumnIndex = 1;
-        if (isTranslationEntryTranslations)
-        {
-            Console.WriteLine("Parsing " + nameof(TranslationEntry) + " CSV lines ...");
-            entryList.SourceLanguage = csvLines[0].Split(',')[0].Replace("Source Language,", "").Trim();
-            entryList.TargetLanguage = csvLines[0].Split(',')[2].Replace("Target Language,", "").Trim();
-            Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
-        }
-        else
-        {
-            Console.WriteLine("Parsing value-pair CSV lines ...");
-            bool isTwoColumnsTargetFirst = csvLines[0].StartsWith("[Target:") && csvLines[0].Contains("[Source:");
-            if (isTwoColumnsTargetFirst)
-            {
-                SourceTextColumnIndex = 1;
-                TargetTextColumnIndex = 0;
-                var sourceLanguage = csvLines[0].Split(',')[1].Replace("[Source:", "").Replace("]", "").Trim();
-                entryList.SourceLanguage = sourceLanguage;
+        var sourceLanguages = headerColumns.Where(h => h.StartsWith("Source", StringComparison.OrdinalIgnoreCase)).Select(x => x.Split(':')[1]).ToArray();
+        var targetLanguages = headerColumns.Where(h => h.StartsWith("Target", StringComparison.OrdinalIgnoreCase)).Select(x => x.Split(':')[1]).ToArray();
 
-                var targetLanguage = csvLines[0].Split(',')[0].Replace("[Target:", "").Replace("]", "").Trim();
-                entryList.TargetLanguage = targetLanguage;
-                Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
-            }
-            else
-            {
-                var isTwoColumnsSourceFirst = csvLines[0].StartsWith("[Source:") && csvLines[0].Contains("[Target:");
-                if (isTwoColumnsSourceFirst)
-                {
-                    SourceTextColumnIndex = 0;
-                    TargetTextColumnIndex = 1;
-                    var sourceLanguage = csvLines[0].Split(',')[0].Replace("[Source:", "").Replace("]", "").Trim();
-                    entryList.SourceLanguage = sourceLanguage;
-                    var targetLanguage = csvLines[0].Split(',')[1].Replace("[Target:", "").Replace("]", "").Trim();
-                    entryList.TargetLanguage = targetLanguage;
-                    Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
-                }
-                else
-                {
-                    var isSingleColumn = csvLines[0].StartsWith("[Source:") && !csvLines[0].Contains("[Target:");
-                    if (isSingleColumn)
-                    {
-                        SourceTextColumnIndex = 0;
-                        TargetTextColumnIndex = 1;
-                        var sourceLanguage = csvLines[0].Split(',')[0].Replace("[Source:", "").Replace("]", "").Trim();
-                        entryList.SourceLanguage = sourceLanguage;
-                        entryList.TargetLanguage = String.Empty;
-                        Console.WriteLine($"Source Language: {entryList.SourceLanguage}, Target Language: {entryList.TargetLanguage}");
-                    }
-                }
-            }
+        foreach (var language in sourceLanguages)
+        {
+            ConsoleLogger.WriteLine($"Detected source language: {language}");
+            entryList.VoiceLanguages.Add(new VoiceLanguage(language, LanguageTypes.Source));
         }
 
-        foreach (var line in csvLines)
+        foreach (var language in targetLanguages)
         {
-            if (line.StartsWith("[Source Language") || line.StartsWith("[Target Language"))
-            {
-                // Skip header line
-                continue;
-            }
+            ConsoleLogger.WriteLine($"Detected target language: {language}");
+            entryList.VoiceLanguages.Add(new VoiceLanguage(language, LanguageTypes.Target));
+        }
 
+        entryList.IsTranslationEntryTranslations = csvLines.Length > 2
+          && headerLine.Contains("Source Language,") && headerLine.Contains("Target Language,");
+
+
+        foreach (string line in csvLines)
+        {
+            var entryRow = new TextEntryRow();
             var columns = SplitCsvLine(line).ToArray();
-            //Example: English,"among the monolith, sunk into the ground",Finnish,"maahan vajonneiden, megaliittien keskellä"
-            if (columns.Length >= 4)
+            for (int i = 0; i < columns.Length; i++)
             {
-                var sourceText = columns[1].Trim('"');
-                var targetText = columns[3].Trim('"');
-                entryList.Add(new TranslationEntry
+                string column = columns[i];
+                var entry = new TextEntry
                 {
-                    SourceText = sourceText,
-                    TargetText = targetText
-                });
-            }
-            else
-            {
-                if (columns.Length >= 2)
-                {
-                    //Example: "Hello, this is a sample.","Hei, tämä on esimerkki."
-                    string sourceText = columns[SourceTextColumnIndex].Trim('"');
-                    string targetText = columns[TargetTextColumnIndex].Trim('"');
+                    Language = GetLanguageName(entryList.VoiceLanguages, i),
+                    Text = column.Trim('"').Trim(),
+                };
 
-                    entryList.Add(new TranslationEntry
-                    {
-                        SourceText = sourceText,
-                        TargetText = targetText
-                    });
-                }
+                entryRow.Add(entry);
             }
+            entryList.Add(entryRow);
+            
         }
         return entryList;
+    }
+
+    private VoiceLanguage GetLanguageName(VoiceLanguageList voiceLanguages, int index)
+    {
+        return VoiceLanguage.System;
     }
 
     /// <summary>
