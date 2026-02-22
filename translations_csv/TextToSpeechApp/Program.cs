@@ -5,6 +5,7 @@ using System.Linq;
 using TextToSpeechApp;
 using TranslationTools;
 using TranslationTools.OllamaApi;
+using Microsoft.Extensions.Logging;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
@@ -19,7 +20,7 @@ await translator.ProcessCsvAsync(
     inputFilePath: @"G:\code\GitHub\khryo-makhina\public\translations_csv\TranslationTools\OllamaApi\test\input_phrases.csv",  // CSV with a "text" column
     outputFilePath: @"G:\code\GitHub\khryo-makhina\public\translations_csv\TranslationTools\OllamaApi\test\translated_fi.csv"
 );
-return;
+return;//TODO Remove after testing
 
 int startinglineNumber = -1;
 if (args.Contains("--help") || args.Contains("-h"))

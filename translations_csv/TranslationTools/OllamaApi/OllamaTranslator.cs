@@ -20,11 +20,11 @@ public class OllamaTranslator
 {
     private readonly HttpClient _httpClient;
     private readonly string _ollamaUrl = "http://localhost:11434/api/generate"; // Default Ollama port
-
     private readonly ITranslationService _translationService;
 
-    public OllamaTranslator(ITranslationService translationService = null)
+    public OllamaTranslator(ITranslationService? translationService = null, HttpClient? httpClient = null)
     {
+        _httpClient = httpClient ?? new HttpClient();
         _translationService = translationService ?? new OllamaTranslationService();
     }
 
@@ -96,36 +96,62 @@ public class OllamaTranslator
         }
     }
 
-    /// <summary>
-    /// Batch translate a list of texts (with parallel processing).
-    /// Adjust `maxParallelTasks` (e.g., `8` for SSDs, `4` for HDDs).
-    /// </summary>
+    ///// <summary>
+    ///// Batch translate a list of texts (with parallel processing).
+    ///// Adjust `maxParallelTasks` (e.g., `8` for SSDs, `4` for HDDs).
+    ///// </summary>
+    //public async Task<List<CsvEntry>> BatchTranslateAsync(List<CsvEntry> entries, int maxParallelTasks = 4)
+    //{
+    //    if (entries == null || !entries.Any())
+    //        return entries ?? new List<CsvEntry>();
+
+    //    var results = new List<CsvEntry>();
+
+    //    // Process entries in parallel
+    //    var tasks = entries.Select(async entry =>
+    //    {
+    //        try
+    //        {
+    //            // Translate each entry
+    //            entry.TargetText = await _translationService.TranslateAsync(entry.SourceText);
+    //            return entry;
+    //        }
+    //        catch (Exception ex)
+    //        {
+    //            Console.WriteLine($"Error translating '{entry.SourceText}': {ex.Message}");
+    //            return entry;
+    //        }
+    //    });
+
+    //    await Task.WhenAll(tasks);
+    //    return entries;
+    //}   
+
     public async Task<List<CsvEntry>> BatchTranslateAsync(List<CsvEntry> entries, int maxParallelTasks = 4)
     {
         if (entries == null || !entries.Any())
             return entries ?? new List<CsvEntry>();
 
         var results = new List<CsvEntry>();
+        var translatedEntries = new List<CsvEntry>();
 
-        // Process entries in parallel
-        var tasks = entries.Select(async entry =>
+        await Parallel.ForEachAsync(entries, new ParallelOptions { MaxDegreeOfParallelism = maxParallelTasks }, async (entry, token) =>
         {
             try
             {
-                // Translate each entry
                 entry.TargetText = await _translationService.TranslateAsync(entry.SourceText);
-                return entry;
+                translatedEntries.Add(entry);  // Add to the translated list
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error translating '{entry.SourceText}': {ex.Message}");
-                return entry;
+                // Optionally:  You might want to add the entry with an error flag or message.
+                translatedEntries.Add(entry); // Add the entry even if there's an error.
             }
         });
 
-        await Task.WhenAll(tasks);
-        return entries;
-    }   
+        return translatedEntries; // Return the translated list.
+    }
 
     /// <summary>
     /// Read CSV, translate, and save results

@@ -3,14 +3,25 @@ using Flurl.Http;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.IO;
+using System.IO.Pipes;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace TranslationTools.OllamaApi;
+
+public class OllamaTranslateRequest
+{
+    [JsonProperty("model")]
+    public string Model { get; set; } = "translategemma:12b";
+    [JsonProperty("prompt")]
+    public string Prompt { get; set; } = string.Empty;
+    [JsonProperty("stream")]
+    public bool Stream { get; set; } = false;   
+}
 
 public class OllamaTranslationService : ITranslationService
 {
@@ -35,55 +46,77 @@ public class OllamaTranslationService : ITranslationService
 
         var requestPrompt = GetRequestPrompt(textTrimmed);
 
-        var request = new
+        //var request = new
+        //{
+        //    model = "translategemma:12b",
+        //    prompt = $"Translate to Finnish '{text}' and return ONLY the translation",
+        //    stream = false
+        //};
+
+        var request = new OllamaTranslateRequest
         {
-            model = "translategemma:12b",
-            prompt = $"Translate to Finnish '{text}' and return ONLY the translation",
-            stream = false
+            Model = "translategemma:12b",
+            Prompt = $"Translate '{text}' to Finnish and return ONLY the translation. If multiple translatation candidates, pick two accurate and separate them in the translate content with a '/'.",
+            Stream = false
         };
 
         try
         {
-            using (var client = _httpClient)
+            string json = string.Empty;
+            // Create a StringWriter to hold the JSON output
+            using (var stringWriter = new StringWriter())
             {
-                var json = JsonConvert.SerializeObject(request);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                HttpResponseMessage response = await client.PostAsync(apiUrl, content);
-
-                if (response.IsSuccessStatusCode)
+                // Create a JsonSerializer instance
+                var serializer = new Newtonsoft.Json.JsonSerializer
                 {
-                    string responseBody = await response.Content.ReadAsStringAsync();
+                    Formatting = Formatting.Indented // Makes JSON pretty-printed
+                };
 
-                    // Attempt a simple parsing.  This might need adjustment based on the actual response format.
-                    // For example, if the response is a JSON object with a "result" field, you'd access it here.
+                // Serialize the object to the StringWriter
+                serializer.Serialize(stringWriter, request);
 
-                    if (string.IsNullOrWhiteSpace(responseBody))
-                    {
-                        Console.WriteLine("Error: Empty response body.");
-                        return text; // Return original text on error
-                    }
+                // Get the JSON string
+                json = stringWriter.ToString();
 
-                    Console.WriteLine($"Response: {responseBody}"); // Log the raw response
-                    return responseBody.Trim(); // Return the trimmed response
-                }
-                else
-                {
-                    Console.WriteLine($"Error: {response.StatusCode}");
-                    Console.WriteLine($"Error Body: {await response.Content.ReadAsStringAsync()}");
-                    return text; // Return original text on error
-                }
+                // Output the JSON
+                Console.WriteLine("Serialized JSON:");
+                Console.WriteLine(json);
             }
+
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            HttpResponseMessage response = await _httpClient.PostAsync(apiUrl, content);
+
+            response.EnsureSuccessStatusCode(); // Throw exception on error status codes (4xx, 5xx)
+
+            string responseBody = await response.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(responseBody))
+            {
+                Console.WriteLine($"Warning: Empty response body for '{text}'. Returning original text.");
+                return text; // Return original text on error
+            }
+
+            Console.WriteLine($"Response: {responseBody}"); // Log the raw response
+            return responseBody.Trim(); // Return the trimmed response
         }
         catch (HttpRequestException ex)
         {
-            Console.WriteLine($"HTTP Request Error: {ex.Message}");
-            return text; // Return original text on error
+            Console.Error.WriteLine($"HTTP request error for '{text}': {ex.Message}");
+            // Log the error (e.g., using Serilog or NLog)
+            return text; // Return the original text or a default value
+        }
+        catch (Newtonsoft.Json.JsonException ex)
+        {
+            Console.Error.WriteLine($"JSON parsing error for '{text}': {ex.Message}");
+            // Log the error
+            return text; // Return the original text or a default value
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An unexpected error occurred: {ex.Message}");
-            return text; // Return original text on error
+            Console.Error.WriteLine($"Unexpected error during translation of '{text}': {ex.Message}");
+            // Log the error
+            return text; // Return the original text or a default value
         }
     }
 }
