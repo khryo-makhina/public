@@ -15,3 +15,4 @@ ai_offline/ollama_with_open_webui/open_webui_data/*
 local_user_files/*
 !local_user_files/README.md
 
+temp_task_progress.txt

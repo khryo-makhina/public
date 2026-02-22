@@ -18,6 +18,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TranslationTools.Tests", "T
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OllamaTranslatorApp", "OllamaTranslatorApp\OllamaTranslatorApp.csproj", "{FCE92ECA-BEF6-4E5C-8E0D-D1DA47CE982E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TextFileSplitterApp", "TextFileSplitterApp\TextFileSplitterApp.csproj", "{52133382-3C01-4DBA-B859-6FC0685101E9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +46,10 @@ Global
 		{FCE92ECA-BEF6-4E5C-8E0D-D1DA47CE982E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FCE92ECA-BEF6-4E5C-8E0D-D1DA47CE982E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FCE92ECA-BEF6-4E5C-8E0D-D1DA47CE982E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{52133382-3C01-4DBA-B859-6FC0685101E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{52133382-3C01-4DBA-B859-6FC0685101E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{52133382-3C01-4DBA-B859-6FC0685101E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{52133382-3C01-4DBA-B859-6FC0685101E9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
