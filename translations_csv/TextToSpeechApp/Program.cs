@@ -4,8 +4,22 @@ using System.IO;
 using System.Linq;
 using TextToSpeechApp;
 using TranslationTools;
+using TranslationTools.OllamaApi;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
+
+var translator = new OllamaTranslator();
+
+// Example 1: Translate a single phrase
+var singleTranslation = await translator.TranslateToFinnishAsync("Hello, how are you?");
+Console.WriteLine($"Single translation: {singleTranslation}");
+
+// Example 2: Process a CSV file
+await translator.ProcessCsvAsync(
+    inputFilePath: @"G:\code\GitHub\khryo-makhina\public\translations_csv\TranslationTools\OllamaApi\test\input_phrases.csv",  // CSV with a "text" column
+    outputFilePath: @"G:\code\GitHub\khryo-makhina\public\translations_csv\TranslationTools\OllamaApi\test\translated_fi.csv"
+);
+return;
 
 int startinglineNumber = -1;
 if (args.Contains("--help") || args.Contains("-h"))
