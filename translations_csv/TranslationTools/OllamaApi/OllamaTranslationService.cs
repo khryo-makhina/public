@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace TranslationTools.OllamaApi;
 
@@ -16,17 +17,28 @@ public class OllamaTranslationService : ITranslationService
     private readonly HttpClient _httpClient;
     private readonly string apiUrl = "http://localhost:11434/api/generate";
 
-    public OllamaTranslationService(HttpClient httpClient = null)
+    public OllamaTranslationService(HttpClient? httpClient = null)
     {
         _httpClient = httpClient ?? new HttpClient();
     }
 
+    private string GetRequestPrompt(string text)
+    {
+        return "instruction: Translate the following English text to Finnish. Provide ONLY the translation." + Environment.NewLine +
+            "format: plain text" + Environment.NewLine +
+            "input_text:" + text;        
+    }
+
     public async Task<string> TranslateAsync(string text)
     {
+        var textTrimmed = text.Trim().Trim('"');
+
+        var requestPrompt = GetRequestPrompt(textTrimmed);
+
         var request = new
         {
             model = "translategemma:12b",
-            prompt = $"Translate the following English text to Finnish:\n{text}\nFinnish translation:",
+            prompt = $"Translate to Finnish '{text}' and return ONLY the translation",
             stream = false
         };
 
@@ -34,7 +46,6 @@ public class OllamaTranslationService : ITranslationService
         {
             using (var client = _httpClient)
             {
-                // Create HttpContent from the request object
                 var json = JsonConvert.SerializeObject(request);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -42,57 +53,37 @@ public class OllamaTranslationService : ITranslationService
 
                 if (response.IsSuccessStatusCode)
                 {
-                    try
+                    string responseBody = await response.Content.ReadAsStringAsync();
+
+                    // Attempt a simple parsing.  This might need adjustment based on the actual response format.
+                    // For example, if the response is a JSON object with a "result" field, you'd access it here.
+
+                    if (string.IsNullOrWhiteSpace(responseBody))
                     {
-                        var ollamaResponse = JsonConvert.DeserializeObject<OllamaResponse>(await
-response.Content.ReadAsStringAsync());
-
-                        if (ollamaResponse != null)
-                        {
-                            // Check if Context is null before accessing it
-                            if (ollamaResponse.Context != null)
-                            {
-                                Console.WriteLine("Context values:");
-                                foreach (var value in ollamaResponse.Context)
-                                {
-                                    Console.WriteLine(value);
-                                }
-                            }
-                            else
-                            {
-                                Console.WriteLine("Context is null in the response.");
-                            }
-
-                            Console.WriteLine($"Response: {ollamaResponse.Response}");
-                            Console.WriteLine($"Done: {ollamaResponse.Done}");
-
-                            return ollamaResponse.Response; // Return the translation!
-                        }
-                        else
-                        {
-                            Console.WriteLine("Error: OllamaResponse is null.");
-                            return text; // Return original text on error.
-                        }
+                        Console.WriteLine("Error: Empty response body.");
+                        return text; // Return original text on error
                     }
-                    catch (JsonSerializationException jsonEx)
-                    {
-                        Console.WriteLine($"JSON Deserialization error: {jsonEx.Message}");
-                        Console.WriteLine($"Response body: {await response.Content.ReadAsStringAsync()}");
-                        return text; // Return original text on error.
-                    }
+
+                    Console.WriteLine($"Response: {responseBody}"); // Log the raw response
+                    return responseBody.Trim(); // Return the trimmed response
                 }
                 else
                 {
                     Console.WriteLine($"Error: {response.StatusCode}");
                     Console.WriteLine($"Error Body: {await response.Content.ReadAsStringAsync()}");
-                    return text; // Return original text on error.
+                    return text; // Return original text on error
                 }
             }
         }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"HTTP Request Error: {ex.Message}");
+            return text; // Return original text on error
+        }
         catch (Exception ex)
         {
-            Console.WriteLine($"Translation failed for '{text}': {ex.Message}");
-            return text; // Fallback to original text
+            Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+            return text; // Return original text on error
         }
     }
 }

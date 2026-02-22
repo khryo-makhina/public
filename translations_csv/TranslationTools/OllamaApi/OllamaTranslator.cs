@@ -125,16 +125,7 @@ public class OllamaTranslator
 
         await Task.WhenAll(tasks);
         return entries;
-    }
-
-    private async Task<string> TranslateTextAsync(string text)
-    {
-        // Mock translation for testing
-        return $"Translated: {text}";
-
-        // For real implementation:
-        // return await _translationService.TranslateAsync(text);
-    }
+    }   
 
     /// <summary>
     /// Read CSV, translate, and save results
