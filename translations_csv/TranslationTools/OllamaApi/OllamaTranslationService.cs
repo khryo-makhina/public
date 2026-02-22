@@ -8,20 +8,9 @@ using System.IO;
 using System.IO.Pipes;
 using System.Net.Http;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace TranslationTools.OllamaApi;
-
-public class OllamaTranslateRequest
-{
-    [JsonProperty("model")]
-    public string Model { get; set; } = "translategemma:12b";
-    [JsonProperty("prompt")]
-    public string Prompt { get; set; } = string.Empty;
-    [JsonProperty("stream")]
-    public bool Stream { get; set; } = false;   
-}
 
 public class OllamaTranslationService : ITranslationService
 {
@@ -31,32 +20,16 @@ public class OllamaTranslationService : ITranslationService
     public OllamaTranslationService(HttpClient? httpClient = null)
     {
         _httpClient = httpClient ?? new HttpClient();
-    }
-
-    private string GetRequestPrompt(string text)
-    {
-        return "instruction: Translate the following English text to Finnish. Provide ONLY the translation." + Environment.NewLine +
-            "format: plain text" + Environment.NewLine +
-            "input_text:" + text;        
-    }
+    }    
 
     public async Task<string> TranslateAsync(string text)
     {
-        var textTrimmed = text.Trim().Trim('"');
+        var textTrimmed = text.Trim().Trim('"').Replace("\"", "`");
 
-        var requestPrompt = GetRequestPrompt(textTrimmed);
-
-        //var request = new
-        //{
-        //    model = "translategemma:12b",
-        //    prompt = $"Translate to Finnish '{text}' and return ONLY the translation",
-        //    stream = false
-        //};
-
-        var request = new OllamaTranslateRequest
+        var request = new OllamaTranslationRequest
         {
-            Model = "translategemma:12b",
-            Prompt = $"Translate '{text}' to Finnish and return ONLY the translation. If multiple translatation candidates, pick two accurate and separate them in the translate content with a '/'.",
+            Model = GetLlmModelName(),
+            Prompt = GetRequestPrompt(textTrimmed),
             Stream = false
         };
 
@@ -118,5 +91,14 @@ public class OllamaTranslationService : ITranslationService
             // Log the error
             return text; // Return the original text or a default value
         }
+    }
+
+    private string GetRequestPrompt(string text)
+    {
+        return $"Translate '{text}' to Finnish and return ONLY the translation. If multiple translatation candidates, pick two accurate and separate them in the translate content with a '/'.";
+    }
+    private string GetLlmModelName()
+    {
+        return "translategemma:12b";
     }
 }

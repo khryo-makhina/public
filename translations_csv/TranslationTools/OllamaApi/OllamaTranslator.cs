@@ -1,10 +1,12 @@
 ﻿using CsvHelper;
+using CsvHelper.Configuration;
 using Newtonsoft.Json;
 using System;
 using System;
 using System.Collections.Generic;
 using System.Collections.Generic;
 using System.Formats.Asn1;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -16,12 +18,36 @@ using System.Threading.Tasks;
 
 namespace TranslationTools.OllamaApi;
 
+/// <summary>
+/// The OllamaTranslator class provides functionality to translate text from English to Finnish using the Ollama API. 
+/// It includes methods for translating individual texts, batch translating a list of entries, 
+/// and processing CSV files containing source texts and saving the translated results. 
+/// The class handles HTTP communication with the Ollama API, error handling, and ensures proper CSV formatting for the output.
+/// </summary>
 public class OllamaTranslator
 {
+    /// <summary>
+    /// The HttpClient instance used for making HTTP requests to the Ollama API. 
+    /// It is initialized in the constructor and can be optionally injected for testing or customization purposes.
+    /// </summary>
     private readonly HttpClient _httpClient;
+
+    /// <summary>
+    /// The base URL for the Ollama API endpoint used for generating translations.
+    /// </summary>
     private readonly string _ollamaUrl = "http://localhost:11434/api/generate"; // Default Ollama port
+
+    /// <summary>
+    /// The ITranslationService instance used for translating text. 
+    /// It is initialized in the constructor and can be optionally injected for testing or customization purposes.
+    /// </summary>
     private readonly ITranslationService _translationService;
 
+    /// <summary>
+    /// Initializes a new instance of the OllamaTranslator class with optional parameters for translation service and HTTP client.
+    /// </summary>
+    /// <param name="translationService"><see cref="ITranslationService"/> instance to use for translation operations.</param>
+    /// <param name="httpClient">Optional <see cref="HttpClient"/> instance to use for HTTP requests.</param>
     public OllamaTranslator(ITranslationService? translationService = null, HttpClient? httpClient = null)
     {
         _httpClient = httpClient ?? new HttpClient();
@@ -29,104 +55,11 @@ public class OllamaTranslator
     }
 
     /// <summary>
-    /// Translate a single text to Finnish using Ollama
+    /// Translate in batches with controlled parallelism to avoid overwhelming the API and to improve performance.
     /// </summary>
-    public async Task<string> TranslateToFinnishAsync(string text)
-    {
-        var request = new
-        {
-            model = "tinyllama", // or "llama3" for better quality
-            prompt = $"Translate the following English text to Finnish:\n{text}\nFinnish translation:",
-            stream = false
-        };
-
-        try
-        {
-            var response = await _httpClient.PostAsJsonAsync(_ollamaUrl, request);
-            response.EnsureSuccessStatusCode();
-
-            var ollamaResponse = JsonConvert.DeserializeObject<OllamaResponse>(
-        await response.Content.ReadAsStringAsync()
-    );
-
-
-            // Extract the translation (Ollama returns JSON with "response" field)
-            return ollamaResponse?.Response?.Trim() ?? text; // Fallback to original if empty
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Translation failed for '{text}': {ex.Message}");
-            return text; // Fallback to original text
-        }
-    }
-
-    /// <summary>
-    /// Add a retry mechanism for transient errors:
-    /// </summary>
-    /// <param name="text"></param>
-    /// <param name="retries"></param>
-    /// <returns>string</returns>   
-    private async Task<string> TranslateWithRetryAsync(string text, int retries = 3)
-    {
-        var request = new
-        {
-            model = "tinyllama",
-            prompt = $"Translate the following English text to Finnish:\n{text}\nFinnish translation:",
-            stream = false
-        };
-
-        try
-        {
-            var response = await _httpClient.PostAsJsonAsync(_ollamaUrl, request);
-            response.EnsureSuccessStatusCode();
-
-            var result = await response.Content.ReadAsStringAsync();
-            var ollamaResponse = JsonConvert.DeserializeObject<OllamaResponse>(result);
-
-            Console.WriteLine($"Request: {JsonConvert.SerializeObject(request)}");
-            Console.WriteLine($"Response: {result}");
-
-            // Safely extract the translation (null-check + fallback)
-            return ollamaResponse?.Response?.Trim() ?? text;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Translation failed for '{text}': {ex.Message}");
-            return text; // Fallback to original text
-        }
-    }
-
-    ///// <summary>
-    ///// Batch translate a list of texts (with parallel processing).
-    ///// Adjust `maxParallelTasks` (e.g., `8` for SSDs, `4` for HDDs).
-    ///// </summary>
-    //public async Task<List<CsvEntry>> BatchTranslateAsync(List<CsvEntry> entries, int maxParallelTasks = 4)
-    //{
-    //    if (entries == null || !entries.Any())
-    //        return entries ?? new List<CsvEntry>();
-
-    //    var results = new List<CsvEntry>();
-
-    //    // Process entries in parallel
-    //    var tasks = entries.Select(async entry =>
-    //    {
-    //        try
-    //        {
-    //            // Translate each entry
-    //            entry.TargetText = await _translationService.TranslateAsync(entry.SourceText);
-    //            return entry;
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            Console.WriteLine($"Error translating '{entry.SourceText}': {ex.Message}");
-    //            return entry;
-    //        }
-    //    });
-
-    //    await Task.WhenAll(tasks);
-    //    return entries;
-    //}   
-
+    /// <param name="entries">The source texts contained in a list of <see cref="CsvEntry"/></param>
+    /// <param name="maxParallelTasks">Optional max concurrent requests. Default: 4.</param>
+    /// <returns>A list of <see cref="CsvEntry"/> containing translations.</returns>
     public async Task<List<CsvEntry>> BatchTranslateAsync(List<CsvEntry> entries, int maxParallelTasks = 4)
     {
         if (entries == null || !entries.Any())
@@ -135,11 +68,28 @@ public class OllamaTranslator
         var results = new List<CsvEntry>();
         var translatedEntries = new List<CsvEntry>();
 
+        TranslationCsvFileHandler csvFileHandler = new();
         await Parallel.ForEachAsync(entries, new ParallelOptions { MaxDegreeOfParallelism = maxParallelTasks }, async (entry, token) =>
         {
+            await Task.Delay(100, token); // Small delay to prevent overwhelming the API, a delay without blocking.
+
             try
             {
-                entry.TargetText = await _translationService.TranslateAsync(entry.SourceText);
+                var response = await _translationService.TranslateAsync(entry.SourceText);
+                var responseObject = JsonConvert.DeserializeObject<OllamaResponseObject>(response);
+                if(responseObject == null)
+                {
+                    Console.WriteLine($"Received NULL response for '{entry.SourceText}'.");
+                    translatedEntries.Add(entry); // Add the entry even if translation fails.
+                    return;
+                }
+
+                var targetText = responseObject.Response?.Trim() ?? entry.SourceText; // Fallback to source text if translation is empty
+
+
+                entry.TargetText = csvFileHandler.EnsureContentNotQuoted(targetText); // Ensure proper CSV formatting
+                entry.SourceText = csvFileHandler.EnsureContentNotQuoted(entry.SourceText); // Ensure proper CSV formatting
+
                 translatedEntries.Add(entry);  // Add to the translated list
             }
             catch (Exception ex)
@@ -151,47 +101,37 @@ public class OllamaTranslator
         });
 
         return translatedEntries; // Return the translated list.
-    }
+    }    
 
     /// <summary>
-    /// Read CSV, translate, and save results
+    /// Processes a CSV file by reading it, translating its contents, and writing the translated results to a new CSV file.
     /// </summary>
-    public async Task ProcessCsvAsync(string inputFilePath, string outputFilePath)
-    {
-        // UTF-8 with BOM for better Excel compatibility
-        var utf8WithBom = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
-
+    /// <param name="inputFilepath">The path to the input CSV file.</param>
+    /// <param name="outputFilepath">The path where the translated output CSV file will be saved.</param>
+    public async Task ProcessCsvAsync(string inputFilepath, string outputFilepath)
+    {       
         // Verify input file exists
-        if (!File.Exists(inputFilePath))
+        if (!File.Exists(inputFilepath))
         {
-            throw new FileNotFoundException($"Input file `{inputFilePath}` not found in Current working directory `{Directory.GetCurrentDirectory()}`.");
+            throw new FileNotFoundException($"Input file `{inputFilepath}` not found in current working directory `{Directory.GetCurrentDirectory()}`.");
         }
 
+        TranslationCsvFileHandler csvFileHandler = new();
         try
-        {
-            // Read input CSV
-            using var reader = new StreamReader(inputFilePath, utf8WithBom);
-            using var csv = new CsvReader(reader, System.Globalization.CultureInfo.InvariantCulture);
-            List<CsvEntry> records = csv.GetRecords<CsvEntry>().ToList();
+        {            
+            List<CsvEntry> records = csvFileHandler.ReadCsvRecords(inputFilepath);
 
-            // Translate in batches
+            if(records == null || !records.Any())
+            {
+                Console.WriteLine($"No records found in `{inputFilepath}`. Please check the file content.");
+                return; // Exit if no records to process
+            }
+            
             Console.WriteLine($"Translating {records.Count} phrases...");
             List<CsvEntry> translatedRecords = await BatchTranslateAsync(records);
 
-            // Ensure output directory exists
-            var outputDir = Path.GetDirectoryName(outputFilePath);
-            if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
-            {
-                Directory.CreateDirectory(outputDir);
-            }
-
-            // Write output CSV
-            using var writer = new StreamWriter(outputFilePath, false, utf8WithBom);
-            using var csvWriter = new CsvWriter(writer, System.Globalization.CultureInfo.InvariantCulture);
-
-            csvWriter.WriteRecords(translatedRecords);
-
-            Console.WriteLine($"Done! Results saved to {outputFilePath}");
+            var result = csvFileHandler.WriteCsvRecords(translatedRecords, outputFilepath);
+            Console.WriteLine(result);
         }
         catch (IOException ex)
         {
@@ -203,6 +143,5 @@ public class OllamaTranslator
             // Re-throw all other exceptions
             throw new Exception($"Unexpected error during processing: {ex.Message}", ex);
         }
-    }
-
+    }      
 }
