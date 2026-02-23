@@ -1,10 +1,11 @@
-- 👋 Hi, I’m @khryo-makhina
-- 👀 I’m interested in: micro services with .NET Core, clean code and Vue.JS. 
-- 🌱 I’m currently learning JWT + AWS Secrets Manager.
-- 💞️ I’m looking to collaborate on a transliteration service that writes as pronounced without or with the Vietnamese diacritics.
-- 📫 You can reach me via Github.
+This repository contains apps and tools to be developed as I myself or my friends need them in their daily life.
 
-<!---
-khryo-makhina/khryo-makhina is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
-You can click the Preview link to take a look at your changes.
---->
+The Windows console apps:
+- `AddEntryApp` - for entering English words into file `translations.csv`
+- `TextFileSplitterApp` - split large text files into smaller files
+- `OllamaTranslatorApp` - translate from English to Finnish with offline AI
+- `TextToSpeechApp` - read `translations.csv` using the Windows SAPI speech synthesis
+
+Other utilities:
+- `FileNameSanitizer` - for sanitizing the file names that are downloaded from Internet or unpacked from a .zip files.
+- 
