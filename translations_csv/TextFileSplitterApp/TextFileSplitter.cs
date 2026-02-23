@@ -109,7 +109,7 @@ public class TextFileSplitter
         }
         catch (Exception ex)
         {
-            outcomes.Append($"An error occurred: {ex.Message}");
+            outcomes.Append($"Error occurred: {ex.Message}");
             return outcomes.ToString();
         }
     }
