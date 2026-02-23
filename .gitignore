@@ -11,8 +11,11 @@ translations_csv/TextToSpeechApp/Properties/launchSettings.json
 # Ignore all files in the ai_offline/ollama_with_open_webui/open_webui_data directory, except for README.md
 ai_offline/ollama_with_open_webui/open_webui_data/*
 !ai_offline/ollama_with_open_webui/open_webui_data/README.md
-# Ignore all files in the local_user_files directory, except for README.md
+# Ignore all files in the local_dev directory, except for README.md and the README.md in the local_dev/user_files subdirectory
+local_dev/*
+!local_dev/README.md
 local_user_files/*
 !local_user_files/README.md
 
+# Ignore specific temporary files
 temp_task_progress.txt
