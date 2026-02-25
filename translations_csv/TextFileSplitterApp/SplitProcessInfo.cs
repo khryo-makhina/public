@@ -20,6 +20,8 @@ public class SplitProcessInfo
         TotalLinesPerFile = _requestInfo.TotalLinesPerFile;
         SplitFilesAmount = _requestInfo.SplitFilesAmount;
 
+        _paddedFileCount = SplitFilesAmount.ToString().PadLeft(SplitFilesAmount, '0');
+
         // Initialize mutable state
         Error = new List<string>();
         OutputFiles = new List<string>();
@@ -53,6 +55,8 @@ public class SplitProcessInfo
     /// Gets the estimated number of files to be created from the split request information.
     /// </summary>
     public int SplitFilesAmount { get; }
+
+    private string _paddedFileCount;
 
     /// <summary>
     /// Gets the list of error messages encountered during the split process.
@@ -167,11 +171,13 @@ public class SplitProcessInfo
     {
         // increment file count and return the new path
         FileCount += 1;
+
+        var paddedFileCount = FileCount.ToString().PadLeft(SplitFilesAmountLength, '0');
 #pragma warning disable IDE0045
         if (!string.IsNullOrEmpty(OutputDirectory))
 #pragma warning restore IDE0045
         {
-            OutputFileFullPath = Path.Combine(OutputDirectory, $"{BaseFileName}_{FileCount}{FileExtension}");
+            OutputFileFullPath = Path.Combine(OutputDirectory, $"{BaseFileName}_{paddedFileCount}{FileExtension}");
         }
         else
         {
