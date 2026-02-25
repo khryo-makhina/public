@@ -1,7 +1,4 @@
-﻿using System;
-using System.Text;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Text;
 
 namespace TextFileSplitterApp;
 
@@ -31,6 +28,7 @@ public class SplitProcessInfo
         OutputDirectory = string.Empty;
         FileExtension = string.Empty;
         BaseFileName = string.Empty;
+        OutputFileFullPath = string.Empty;
         SplitFilesAmountLength = 0;
         LineNumber = 0;
         FileCount = 0;
