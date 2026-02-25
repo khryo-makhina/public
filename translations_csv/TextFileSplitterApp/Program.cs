@@ -2,7 +2,6 @@
 // namespace and class declaration are not needed for top-level statements in C# 9.0 and later,
 // which is being used here. The code will be executed in the context of an implicit Program class with a Main method.
 
-using System;
 using TextFileSplitterApp;
 
 if (args.Length < 2)
@@ -13,28 +12,27 @@ if (args.Length < 2)
 }
 
 string inputFilepath = args[0];
-int maxLinesPerFile;
-
-if (!int.TryParse(args[1], out maxLinesPerFile))
+int lines;
+if (!int.TryParse(args[1], out lines))
 {
     Console.WriteLine("Error: Invalid value for max_lines_per_file. Please provide an integer.");
     return;
 }
 
-if(maxLinesPerFile < 2 || maxLinesPerFile > 10000)
+if (lines is < TextFileSplitter.MinLinesPerFile or > TextFileSplitter.MaxLinesPerFile1)
 {
     Console.WriteLine("Error: max_lines_per_file must be between 2 and 10000.");
     return;
-}  
+}
 
 try
 {
     TextFileSplitter splitter = new TextFileSplitter();
-    var splittingInformation = await splitter.GetSplittingInformation(inputFilepath, maxLinesPerFile);
-    Console.WriteLine(splittingInformation);
-    if(splittingInformation.StartsWith("Error", StringComparison.InvariantCultureIgnoreCase))
+    var splitFileInfo = await splitter.GetSplittingInformation(inputFilepath, lines);
+
+    if (!String.IsNullOrEmpty(splitFileInfo.Error))
     {
-        Console.WriteLine("File splitting cannot proceed due to the above error.");
+        Console.WriteLine($"File splitting cannot proceed due to error: {splitFileInfo.Error}");
         return;
     }
 
@@ -47,11 +45,11 @@ try
     }
 
     Console.WriteLine("Proceeding with file splitting...");
-    var splitResult = await splitter.SplitFileAsync(inputFilepath, maxLinesPerFile);
+    SplitFileOutcomeInfo splitResult = await splitter.SplitFileAsync(splitFileInfo);
 
     Console.WriteLine($"File splitting complete.");
     Console.WriteLine($"Details: {splitResult}");
-    
+
     if (args.Length > 2 && args[2].Equals("--csv", StringComparison.InvariantCultureIgnoreCase))
     {
         Console.WriteLine("CSV option detected. Formatting the split files as CSV...");

@@ -19,3 +19,4 @@ local_user_files/*
 
 # Ignore specific temporary files
 temp_task_progress.txt
+launchSettings.json

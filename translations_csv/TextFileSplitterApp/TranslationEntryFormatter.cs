@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-
 namespace TextFileSplitterApp;
 
 public class TranslationEntryFormatter
@@ -18,8 +12,8 @@ public class TranslationEntryFormatter
         }
 
         // Define the output file path (same directory, different name)
-        string outputFilePath = Path.Combine(Path.GetDirectoryName(filePath), Path.GetFileNameWithoutExtension(filePath) +
-"_formatted.txt");
+        var paths = Path.GetDirectoryName(filePath) ?? string.Empty;
+        var outputFilePath = Path.Combine(paths, Path.GetFileNameWithoutExtension(filePath) + "_formatted.txt");
 
         try
         {
