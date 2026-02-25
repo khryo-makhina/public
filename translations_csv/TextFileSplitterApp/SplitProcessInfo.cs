@@ -20,8 +20,6 @@ public class SplitProcessInfo
         TotalLinesPerFile = _requestInfo.TotalLinesPerFile;
         SplitFilesAmount = _requestInfo.SplitFilesAmount;
 
-        _paddedFileCount = SplitFilesAmount.ToString().PadLeft(SplitFilesAmount, '0');
-
         // Initialize mutable state
         Error = new List<string>();
         OutputFiles = new List<string>();
@@ -55,8 +53,6 @@ public class SplitProcessInfo
     /// Gets the estimated number of files to be created from the split request information.
     /// </summary>
     public int SplitFilesAmount { get; }
-
-    private string _paddedFileCount;
 
     /// <summary>
     /// Gets the list of error messages encountered during the split process.
@@ -158,7 +154,10 @@ public class SplitProcessInfo
         outcomes.Append($"Max lines per file: {SplitLinesPerFile}" + Environment.NewLine);
         outcomes.Append($"Estimated number of files to be created: {SplitFilesAmount}" + Environment.NewLine);
 
-        outcomes.Append($"Error: {string.Join("; ", Error)}" + Environment.NewLine);
+        if (Error.Count > 0)
+        {
+            outcomes.Append($"Error: {string.Join("; ", Error)}" + Environment.NewLine);
+        }
 
         return outcomes.ToString();
     }

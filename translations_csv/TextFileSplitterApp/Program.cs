@@ -16,11 +16,13 @@ try
     var splitter = new TextFileSplitter();
     var splitFileInfo = await splitter.GetSplittingInformation(InputFilepath, Lines);
 
-    if (!string.IsNullOrEmpty(splitFileInfo.Error))
+    if (splitFileInfo.Error.Count > 0)
     {
         Console.WriteLine($"File splitting cannot proceed due to error: {splitFileInfo.Error}");
         return;
     }
+
+    Console.WriteLine(splitFileInfo.ToString());
 
     if (!ConfirmUserConsent())
     {

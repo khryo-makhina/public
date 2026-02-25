@@ -30,7 +30,7 @@ public class SplitRequestInfo
     /// <summary>
     /// Gets or sets any error message encountered during the initialization of the split request. This property is used to capture and store any issues that arise while setting up the split request, such as invalid file paths, unreadable files, or other exceptions. It allows for error handling and reporting, enabling the application to provide feedback to the user or log errors for troubleshooting purposes.
     /// </summary>
-    public string Error { get; internal set; } = string.Empty;
+    public List<string> Error { get; internal set; } = [];
 
     /// <summary>
     /// Returns a string representation of the split request information, including details about the input file, total lines, split parameters, estimated output files, and any errors. This method is useful for logging or displaying the current state of the split request in a human-readable format, allowing developers or users to understand the parameters and any issues associated with the split request at a glance.
@@ -44,7 +44,10 @@ public class SplitRequestInfo
         outcomes.Append($"Max lines per file: {SplitLinesPerFile}" + Environment.NewLine);
         outcomes.Append($"Estimated number of files to be created: {SplitFilesAmount}" + Environment.NewLine);
 
-        outcomes.Append($"Error: {Error}" + Environment.NewLine);
+        if (Error.Count > 0)
+        {
+            outcomes.Append($"Error: {Error}" + Environment.NewLine);
+        }
 
         return outcomes.ToString();
     }

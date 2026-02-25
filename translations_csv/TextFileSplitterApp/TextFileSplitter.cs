@@ -129,7 +129,9 @@ public class TextFileSplitter
         {
             if (!File.Exists(filePath))
             {
-                return new SplitRequestInfo { Error = $"Error: File not found at path: {filePath}" };
+                var errorRequestInfo = new SplitRequestInfo();
+                errorRequestInfo.Error.Add($"Error: File not found at path: {filePath}");
+                return errorRequestInfo;
             }
 
             var totalLines = await GetTotalLinesAsync(filePath);
@@ -149,7 +151,9 @@ public class TextFileSplitter
         }
         catch (Exception ex)
         {
-            return new SplitRequestInfo { Error = $"Error occurred: {ex.Message}" };
+            var errorRequestInfo = new SplitRequestInfo();
+            errorRequestInfo.Error.Add($"Error occurred: {ex.Message}");
+            return errorRequestInfo;
         }
     }
 
