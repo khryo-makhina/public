@@ -1,10 +1,7 @@
-using System;
-using System.IO;
-
 namespace FilenameSanitizer;
 
 /// <summary>
-/// Default implementation of IFileSystem that uses the actual file system.
+///     Default implementation of IFileSystem that uses the actual file system.
 /// </summary>
 public class DefaultFileSystem : IFileSystem
 {

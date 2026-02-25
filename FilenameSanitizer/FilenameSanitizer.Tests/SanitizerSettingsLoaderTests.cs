@@ -1,10 +1,12 @@
-using System;
 using NSubstitute;
 using Shouldly;
 using Xunit;
 
 namespace FilenameSanitizer.Tests;
 
+/// <summary>
+/// Unit tests for the SanitizerSettingsLoader class, covering scenarios for loading settings from files,
+/// </summary>
 public class SanitizerSettingsLoaderTests
 {
     [Fact]
@@ -28,15 +30,18 @@ public class SanitizerSettingsLoaderTests
         var fileSystem = Substitute.For<IFileSystem>();
         var logger = Substitute.For<ILogger>();
         fileSystem.FileExists(Arg.Any<string>()).Returns(true);
-        string json = """{"ReplacementCharacter": "#", "ExcludedCharacters": ["-", "@"]}""";
+        var json = """{"ReplacementCharacter": "#", "ExcludedCharacters": ["-", "@"]}""";
         fileSystem.ReadAllText(Arg.Any<string>()).Returns(json);
         var loader = new SanitizerSettingsLoader(fileSystem, logger);
 
+        // Given: a settings file exists with ReplacementCharacter '#' and ExcludedCharacters ['-','@']
+        // When: loading the settings file
         var result = loader.LoadFromFile("test_file_name_does_not_matter_what_is.json");
 
+        // Then: the loader returns the deserialized settings
         result.ShouldNotBeNull();
         result.ReplacementCharacter.ShouldBe("#");
-        result.ExcludedCharacters.ShouldBe(new List<string>() { "-", "@" });
+        result.ExcludedCharacters.ShouldBe(new[] { "-", "@" });
     }
 
     [Fact]
@@ -62,11 +67,13 @@ public class SanitizerSettingsLoaderTests
         var fileSystem = Substitute.For<IFileSystem>();
         var logger = Substitute.For<ILogger>();
         fileSystem.FileExists(Arg.Any<string>()).Returns(false);
-        string customBaseDir = "/custom/base/dir";
+        var customBaseDir = "/custom/base/dir";
         var loader = new SanitizerSettingsLoader(fileSystem, logger, customBaseDir);
 
+        // When: loading settings with a provided base directory
         loader.LoadFromFile("settings.json");
 
-        fileSystem.Received().FileExists(System.IO.Path.Combine(customBaseDir, "settings.json"));
+        // Then: the loader checks for the file in the provided base directory
+        fileSystem.Received().FileExists(Path.Combine(customBaseDir, "settings.json"));
     }
 }

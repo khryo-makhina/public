@@ -1,15 +1,19 @@
+using NSubstitute;
 using Shouldly;
 using Xunit;
-using NSubstitute;
 
 namespace FilenameSanitizer.Tests;
 
-public partial class FilenameSanitizerTests
+/// <summary>
+///  Unit tests for the FilenameSanitizer class, covering various scenarios for renaming
+///  files to meet OS requirements and removing specified patterns from filenames.
+/// </summary>
+public class FilenameSanitizerTests
 {
-    private readonly IFileSystem _fileSystem;
     private const string TestFolder = @"C:\TestFolder";
+    private readonly IFileSystem _fileSystem;
 
-    private ISanitizer _sanitizer;
+    private readonly ISanitizer _sanitizer;
 
     public FilenameSanitizerTests()
     {
@@ -25,6 +29,26 @@ public partial class FilenameSanitizerTests
         return sut;
     }
 
+    private (string source, string destination) GivenSingleFile(string originalName, string expectedName)
+    {
+        var filePathSource = Path.Combine(TestFolder, originalName);
+        var filePathDestination = Path.Combine(TestFolder, expectedName);
+        _fileSystem.GetFiles(TestFolder).Returns(new[] { filePathSource });
+        _fileSystem.FileExists(filePathDestination).Returns(false);
+        _sanitizer.SanitizeFileName(originalName).Returns(expectedName);
+        _sanitizer.IsFilenameSanitized(originalName).Returns(false);
+        return (filePathSource, filePathDestination);
+    }
+
+    private string GivenFileAlreadySanitized(string fileName)
+    {
+        var filePath = Path.Combine(TestFolder, fileName);
+        _fileSystem.GetFiles(TestFolder).Returns(new[] { filePath });
+        _sanitizer.IsFilenameSanitized(fileName).Returns(true);
+        _sanitizer.SanitizeFileName(fileName).Returns(fileName);
+        return filePath;
+    }
+
     [Theory]
     [InlineData("test:file.txt", "test_file.txt")]
     [InlineData("test<>file.txt", "test_file.txt")]
@@ -32,20 +56,14 @@ public partial class FilenameSanitizerTests
     [InlineData("PRN.doc", "_PRN.doc")]
     public void RenameFilesToMeetOsRequirements_ShouldSanitizeFilenames(string originalName, string expectedName)
     {
-        // Setup
-        var filePathSource = Path.Combine(TestFolder, originalName);
-        var filePathDestination = Path.Combine(TestFolder, expectedName);
-        _fileSystem.GetFiles(TestFolder).Returns(new[] { filePathSource });
-        _fileSystem.FileExists(filePathDestination).Returns(false);
-        _sanitizer.SanitizeFileName(originalName).Returns(expectedName);
-        _sanitizer.IsFilenameSanitized(originalName).Returns(false);
-
+        // Given: a single source file exists and the sanitizer will produce the expected destination name
+        var (filePathSource, filePathDestination) = GivenSingleFile(originalName, expectedName);
         var sut = SetUpSut();
 
-        // Test
+        // When: RenameFilesToMeetOsRequirements is executed
         sut.RenameFilesToMeetOsRequirements();
 
-        // Verify
+        // Then: no errors are logged and the file is moved to the destination
         sut.Logger.HasErrors.ShouldBeFalse();
         _fileSystem.Received(1).MoveFile(filePathSource, filePathDestination);
     }
@@ -56,23 +74,18 @@ public partial class FilenameSanitizerTests
     [InlineData("test.bak.txt", "test.txt")]
     public void RenameFilesRemovingPatterns_ShouldRemoveSpecifiedPatterns(string originalName, string expectedName)
     {
-        // Setup
-        var filePathSource = Path.Combine(TestFolder, originalName);
-        _fileSystem.GetFiles(TestFolder).Returns(new[] { filePathSource });
-        var filePathDestination = Path.Combine(TestFolder, expectedName);
-
+        // Given: a single source file exists and the patterns list contains 'prefix-', '_old', '.bak'
+        var (filePathSource, filePathDestination) = GivenSingleFile(originalName, expectedName);
         _fileSystem.FileExists(filePathDestination).Returns(false);
         var patterns = @"prefix-
 _old
 .bak";
-        _sanitizer.SanitizeFileName(originalName).Returns(expectedName);
-        _sanitizer.IsFilenameSanitized(originalName).Returns(false);
         var sut = SetUpSut();
 
-        // Test
+        // When: RenameFilesRemovingPatterns is executed with the patterns
         sut.RenameFilesRemovingPatterns(patterns);
 
-        // Verify
+        // Then: no errors are logged and the file is moved to the expected destination
         sut.Logger.HasErrors.ShouldBeFalse();
         _fileSystem.Received(1).MoveFile(
             Arg.Is<string>(x => x == filePathSource),
@@ -82,35 +95,32 @@ _old
     [Fact]
     public void RenameFilesToMeetOsRequirements_WhenFolderDoesNotExist_ShouldLogError()
     {
-        // Setup
+        // Given: a non-existent folder and the file system reports DirectoryExists=false
         var nonExistentFolder = Path.Combine(TestFolder, "NonExistent");
         _fileSystem.DirectoryExists(nonExistentFolder).Returns(false);
         var sut = new FilenameSanitizer(nonExistentFolder, _sanitizer, _fileSystem);
 
-        // Test
+        // When: attempting to rename files in the non-existent folder
         sut.RenameFilesToMeetOsRequirements();
 
-        // Verify
+        // Then: an error is logged indicating the folder does not exist
         sut.Logger.HasErrors.ShouldBeTrue();
         sut.Logger.Errors.ShouldContain(e => e.Contains("does not exist"));
     }
 
     [Theory]
     [InlineData("test.txt")]
-    [InlineData("normalfile.doc")]
+    [InlineData("normal file.doc")]
     public void RenameFilesToMeetOsRequirements_WhenFilenameIsAlreadyValid_ShouldSkip(string fileName)
     {
-        // Setup
-        var filePath = Path.Combine(TestFolder, fileName);
-        _fileSystem.GetFiles(TestFolder).Returns(new[] { filePath });
-        _sanitizer.IsFilenameSanitized(fileName).Returns(true);
-        _sanitizer.SanitizeFileName(fileName).Returns(fileName);
+        // Given: a file that is already sanitized according to the sanitizer
+        var filePath = GivenFileAlreadySanitized(fileName);
         var sut = SetUpSut();
 
-        // Test
+        // When: RenameFilesToMeetOsRequirements is executed
         sut.RenameFilesToMeetOsRequirements();
 
-        // Verify
+        // Then: a warning is logged and no file move is performed
         sut.Logger.HasWarnings.ShouldBeTrue();
         sut.Logger.Warnings.ShouldContain(w => w.Contains("already sanitized"));
         _fileSystem.DidNotReceive().MoveFile(Arg.Any<string>(), Arg.Any<string>());

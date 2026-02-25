@@ -3,28 +3,26 @@ namespace FilenameSanitizer;
 /// <inheritdoc />
 public class FilenameSanitizer : IFilenameSanitizer
 {
-    private readonly string _folder;
     private readonly IFileSystem _fileSystem;
+    private readonly string _folder;
     private readonly ISanitizer _sanitizer;
-    
-    /// <inheritdoc />
-    public OperationLogger Logger { get; }
 
 
     /// <summary>
-    /// Initializes a new instance of the FilenameSanitizer class.
+    ///     Initializes a new instance of the FilenameSanitizer class.
     /// </summary>
     /// <param name="folder">Optional working folder. If not specified, uses current directory.</param>
-    /// <param name="sanitizerSettingsLoader">Optional sanitizer settings loader. If not specified, uses default settings loader.</param>
+    /// <param name="sanitizer"></param>
     /// <param name="fileSystem">Optional file system implementation. If not specified, uses default file system.</param>
     /// <param name="logger">Optional logger implementation. If not specified, uses console logger.</param>
-    public FilenameSanitizer(string? folder = null, ISanitizer? sanitizer = null, IFileSystem? fileSystem = null, ILogger? logger = null)
+    public FilenameSanitizer(string? folder = null, ISanitizer? sanitizer = null, IFileSystem? fileSystem = null,
+        ILogger? logger = null)
     {
         _folder = ResolveFolderPath(folder);
         Logger = new OperationLogger(_folder);
         _fileSystem = fileSystem ?? new DefaultFileSystem();
         var effectiveLogger = logger ?? new ConsoleLogger();
-        
+
         if (sanitizer == null)
         {
             var settingsLoader = new SanitizerSettingsLoader(_fileSystem, effectiveLogger, _folder);
@@ -36,35 +34,60 @@ public class FilenameSanitizer : IFilenameSanitizer
         }
     }
 
+    /// <inheritdoc />
+    public OperationLogger Logger { get; }
+
+    /// <inheritdoc />
+    public void RenameFilesToMeetOsRequirements()
+    {
+        var filePaths = GetFilePathsFromWorkingFolder();
+
+        Logger.Info.Add("Starting to sanitize filenames in folder: " + _folder);
+        IEnumerable<string> enumerable = filePaths.ToList();
+        if (!enumerable.Any())
+        {
+            return;
+        }
+
+        Logger.Info.Add($"Found {enumerable.Count()} files in folder: {_folder}");
+        foreach (var filePath in enumerable)
+        {
+            Logger.Info.Add($"Processing file: {filePath}");
+            RenameFileIfNeeded(filePath);
+        }
+    }
+
+    /// <inheritdoc />
+    public void RenameFilesRemovingPatterns(string patterns)
+    {
+        Logger.Info.Add($"Removing patterns from filenames in folder: {_folder}");
+        var files = GetFilePathsFromWorkingFolder();
+        if (files.Any())
+        {
+            var patternsList = patterns.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var file in files)
+            {
+                Logger.Info.Add($"Processing file: {file} with patters {patternsList}");
+                RenameFileRemovingPatternsIfNeeded(file, patternsList, Logger);
+            }
+        }
+    }
+
     /// <summary>
-    /// Resolves the working folder path.
+    ///     Resolves the working folder path.
     /// </summary>
     /// <param name="folder">Input folder path, can be null, relative or absolute.</param>
     /// <returns>Absolute path to the working folder.</returns>
     private static string ResolveFolderPath(string? folder)
     {
-        if (string.IsNullOrWhiteSpace(folder))
+#pragma warning disable IDE0046
+        if (!string.IsNullOrWhiteSpace(folder))
+#pragma warning restore IDE0046
         {
-            return Environment.CurrentDirectory;
+            return Path.GetFullPath(folder);
         }
 
-        return Path.GetFullPath(folder);
-    }
-
-    /// <inheritdoc />
-    public void RenameFilesToMeetOsRequirements()
-    {        
-        var filePaths = GetFilePathsFromWorkingFolder();
-        Logger.Info.Add("Starting to sanitize filenames in folder: " + _folder);
-        if (filePaths.Any())
-        {
-            Logger.Info.Add($"Found {filePaths.Count()} files in folder: {_folder}");
-            foreach (var filePath in filePaths)
-            {
-                Logger.Info.Add($"Processing file: {filePath}");
-                RenameFileIfNeeded(filePath);
-            }
-        }
+        return Environment.CurrentDirectory;
     }
 
     private IEnumerable<string> GetFilePathsFromWorkingFolder()
@@ -74,20 +97,22 @@ public class FilenameSanitizer : IFilenameSanitizer
             Logger.Errors.Add($"Folder '{_folder}' does not exist.");
             return Enumerable.Empty<string>();
         }
-        
+
         var allFilePaths = _fileSystem.GetFiles(_folder);
         var filePaths = new List<string>();
-        foreach(var filePath in allFilePaths)
-        { 
-            if(FilenameSanitizer.IsReservedName(filePath))
+        foreach (var filePath in allFilePaths)
+        {
+            if (IsReservedName(filePath))
             {
                 var filename = Path.GetFileName(filePath);
 
                 Logger.Info.Add($"Ignoring reserved file name: {filename}");
                 continue;
             }
+
             filePaths.Add(filePath);
         }
+
         return filePaths;
     }
 
@@ -104,12 +129,14 @@ public class FilenameSanitizer : IFilenameSanitizer
             return true;
         }
 
-        if (fileName.StartsWith(OperationLogger.LogFileNameTemplate))
+#pragma warning disable IDE0046
+        if (!fileName.StartsWith(OperationLogger.LogFileNameTemplate))
+#pragma warning restore IDE0046
         {
-            return true;
+            return false;
         }
 
-        return false;
+        return true;
     }
 
     private void RenameFileIfNeeded(string filePath)
@@ -149,10 +176,10 @@ public class FilenameSanitizer : IFilenameSanitizer
     {
         var filename = Path.GetFileName(filePath);
         Logger.Info.Add($"Sanitizing filename: {filename}");
-        
+
         var sanitizedFilename = _sanitizer.SanitizeFileName(filename);
         Logger.Info.Add($"Sanitized filename: {sanitizedFilename}");
-        
+
         return sanitizedFilename;
     }
 
@@ -172,26 +199,10 @@ public class FilenameSanitizer : IFilenameSanitizer
         }
 
         return true;
-    }      
-
-    /// <inheritdoc />
-    public void RenameFilesRemovingPatterns(string patterns)
-    {
-        Logger.Info.Add($"Removing patterns from filenames in folder: {_folder}");
-        var files = GetFilePathsFromWorkingFolder();
-        if (files.Any())
-        {
-            var patternsList = patterns.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var file in files)
-            {
-                Logger.Info.Add($"Processing file: {file} with patters {patternsList}");
-                RenameFileRemovingPatternsIfNeeded(file, patternsList, Logger);
-            }
-        }
     }
 
     private void RenameFileRemovingPatternsIfNeeded(string file, string[] patterns, OperationLogger logger)
-    {        
+    {
         var fileName = Path.GetFileName(file);
         var sanitizedFileName = RemovePatternsFromFilename(fileName, patterns);
 
@@ -207,13 +218,13 @@ public class FilenameSanitizer : IFilenameSanitizer
     private string RemovePatternsFromFilename(string fileName, string[] patterns)
     {
         Logger.Info.Add($"Removing patterns from filename: {fileName}");
-        string filenamePatternRemoved = patterns.Aggregate(seed: fileName, func: (currentSeed, pattern) =>
+        var filenamePatternRemoved = patterns.Aggregate(fileName, (currentSeed, pattern) =>
         {
-            string filenameProcessed = currentSeed.Replace(pattern, string.Empty, StringComparison.OrdinalIgnoreCase);
+            var filenameProcessed = currentSeed.Replace(pattern, string.Empty, StringComparison.OrdinalIgnoreCase);
             return filenameProcessed;
         });
 
-        Logger.Info.Add($"Filename after removing patterns: {filenamePatternRemoved}"); 
+        Logger.Info.Add($"Filename after removing patterns: {filenamePatternRemoved}");
         return filenamePatternRemoved;
     }
 }

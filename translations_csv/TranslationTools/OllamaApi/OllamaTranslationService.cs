@@ -1,27 +1,21 @@
-﻿using Flurl;
-using Flurl.Http;
+﻿using System.Text;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Dynamic;
-using System.IO;
-using System.IO.Pipes;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TranslationTools.OllamaApi;
 
-public class OllamaTranslationService : ITranslationService
+public class OllamaTranslationService(HttpClient? httpClient = null) : ITranslationService
 {
-    private readonly HttpClient _httpClient;
-    private readonly string apiUrl = "http://localhost:11434/api/generate";
+    /// <summary>
+    /// Initializes a new instance of the OllamaTranslationService class, which provides functionality to translate text using the Ollama API. The constructor accepts an optional HttpClient parameter, allowing for dependency injection of a custom HttpClient instance. If no HttpClient is provided, a new instance will be created internally. This design promotes flexibility and testability of the translation service, enabling it to be easily integrated into various applications and testing scenarios without being tightly coupled to a specific HttpClient implementation.
+    /// </summary>
+    private readonly HttpClient _httpClient = httpClient ?? new HttpClient();
 
-    public OllamaTranslationService(HttpClient? httpClient = null)
-    {
-        _httpClient = httpClient ?? new HttpClient();
-    }    
+    /// <summary>
+    /// Defines the URL endpoint for the Ollama API translation service. This constant string specifies the base URL to which translation requests will be sent. The URL is set to "http://localhost:11434/api/generate", indicating that the Ollama API is expected to be running locally on port 11434 and that the translation requests should be directed to the "/api/generate" endpoint. This constant can be modified if the API endpoint changes or if the service is hosted on a different server or port, allowing for easy configuration of the translation service without requiring changes to the core logic of the application.
+    /// </summary>
+    private const string ApiUrl = "http://localhost:11434/api/generate";
 
+    /// <inheritdoc />
     public async Task<string> TranslateAsync(string text)
     {
         var textTrimmed = text.Trim().Trim('"').Replace("\"", "`");
@@ -35,12 +29,12 @@ public class OllamaTranslationService : ITranslationService
 
         try
         {
-            string json = string.Empty;
+            string json;
             // Create a StringWriter to hold the JSON output
-            using (var stringWriter = new StringWriter())
+            await using (var stringWriter = new StringWriter())
             {
                 // Create a JsonSerializer instance
-                var serializer = new Newtonsoft.Json.JsonSerializer
+                var serializer = new JsonSerializer
                 {
                     Formatting = Formatting.Indented // Makes JSON pretty-printed
                 };
@@ -58,11 +52,11 @@ public class OllamaTranslationService : ITranslationService
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            HttpResponseMessage response = await _httpClient.PostAsync(apiUrl, content);
+            HttpResponseMessage response = await _httpClient.PostAsync(ApiUrl, content);
 
             response.EnsureSuccessStatusCode(); // Throw exception on error status codes (4xx, 5xx)
 
-            string responseBody = await response.Content.ReadAsStringAsync();
+            var responseBody = await response.Content.ReadAsStringAsync();
 
             if (string.IsNullOrWhiteSpace(responseBody))
             {
@@ -75,28 +69,39 @@ public class OllamaTranslationService : ITranslationService
         }
         catch (HttpRequestException ex)
         {
-            Console.Error.WriteLine($"HTTP request error for '{text}': {ex.Message}");
+            await Console.Error.WriteLineAsync($"HTTP request error for '{text}': {ex.Message}");
             // Log the error (e.g., using Serilog or NLog)
             return text; // Return the original text or a default value
         }
-        catch (Newtonsoft.Json.JsonException ex)
+        catch (JsonException ex)
         {
-            Console.Error.WriteLine($"JSON parsing error for '{text}': {ex.Message}");
+            await Console.Error.WriteLineAsync($"JSON parsing error for '{text}': {ex.Message}");
             // Log the error
             return text; // Return the original text or a default value
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Unexpected error during translation of '{text}': {ex.Message}");
+            await Console.Error.WriteLineAsync($"Unexpected error during translation of '{text}': {ex.Message}");
             // Log the error
             return text; // Return the original text or a default value
         }
     }
 
+    /// <summary>
+    /// Generates the prompt text for the translation request based on the input text. This method constructs a specific instruction for the language model, asking it to translate the given text into Finnish and to return only the translation. If there are multiple accurate translation candidates, it instructs the model to separate them with a '/' character. This structured prompt helps guide the language model to produce the desired output format and ensures that the translation results are clear and concise for further processing within the application.
+    /// </summary>
+    /// <param name="text">The text to be translated.</param>
+    /// <returns>The generated prompt text for the translation request.</returns>
     private string GetRequestPrompt(string text)
     {
-        return $"Translate '{text}' to Finnish and return ONLY the translation. If multiple translatation candidates, pick two accurate and separate them in the translate content with a '/'.";
+        return
+            $"Translate '{text}' to Finnish and return ONLY the translation. If multiple translation candidates, pick two accurate and separate them in the translate content with a '/'.";
     }
+
+    /// <summary>
+    /// Gets the name of the language model to be used for translation. This method currently returns a hardcoded model name "translategemma:12b", which is specified in the OllamaTranslationRequest class as the default value for the Model property. The method can be modified in the future to allow for dynamic selection of different models based on specific translation requirements or user preferences, enabling greater flexibility and customization of the translation process.
+    /// </summary>
+    /// <returns>The name of the language model to be used for translation.</returns>
     private string GetLlmModelName()
     {
         return "translategemma:12b";

@@ -71,6 +71,7 @@
 - Tests live in `<project name>.Tests`; mirror production structure and append `Tests` to filenames.
 - Test names: `MethodName_StateOrCondition_ExpectedOutcome`.
 - Test body: `// Given <state or condition>`, blank line, `// When <action>`, blank line, `// Then <expected outcome>`.
+  - Arrange the test scenario code, so that, we can see clearly the Given-When-Then blocks. Example for Given: "//Given x is 1 and y is 2". Keep the setup/given in their private methods if they tend to be bloating the test scenario readability.
 - Run tests or linters only when requested.
 
 ## Tooling & security

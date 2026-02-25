@@ -1,8 +1,8 @@
 using FilenameSanitizer;
 
-var (folder, semicommaSeparatedPatterns) = ParseArguments(args);
+var (folder, semiCommaSeparatedPatterns) = ParseArguments(args);
 
-if (folder == null)
+if (string.IsNullOrEmpty(folder))
 {
     ShowHelp();
     return;
@@ -16,37 +16,22 @@ try
     {
         folder = Environment.CurrentDirectory; // Default to current directory if no folder is specified
     }
-
-    if (!Directory.Exists(folder))
+    var resolved = ResolveAndValidateFolder(folder, filenameSanitizer);
+    if (resolved == null)
     {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine($"Error: The specified folder '{folder}' does not exist or cannot access it.");
-        filenameSanitizer.Logger.Errors.Add($"The specified folder '{folder}' does not exist or cannot access it.");
-        Console.ResetColor();
         return;
     }
-    
-    if (!string.IsNullOrEmpty(semicommaSeparatedPatterns))
-    {        
-        Console.WriteLine("Using the patterns provided in the command line parameter to remove:");
-        Console.WriteLine(semicommaSeparatedPatterns);
-        filenameSanitizer.Logger.Info.Add("Using the patterns provided in the command line parameter to remove:");
-        filenameSanitizer.Logger.Info.Add(semicommaSeparatedPatterns);
-        
-        filenameSanitizer.RenameFilesRemovingPatterns(semicommaSeparatedPatterns);
-    }
-    else
-    {        
-        Console.WriteLine($"Sanitizing filenames in: {folder}");
-        filenameSanitizer.Logger.Info.Add($"Sanitizing filenames in: {folder}");
-        filenameSanitizer.RenameFilesToMeetOsRequirements();
-    }
+
+    // Update working folder with resolved path
+    folder = resolved;
+
+    ProcessSanitization(folder, semiCommaSeparatedPatterns, filenameSanitizer);
 
     // Output results
     ConsoleOutputLogs(filenameSanitizer.Logger);
 
     // Write log file to the target folder
-    filenameSanitizer.Logger?.FlushToFile();
+    filenameSanitizer.Logger.FlushToFile();
 }
 catch (Exception ex)
 {
@@ -54,48 +39,129 @@ catch (Exception ex)
     Console.WriteLine($"Error: {ex.Message}");
     filenameSanitizer.Logger.Errors.Add(ex.Message);
     Console.ResetColor();
-    return;
 }
 finally
 {
+    PrintCompletion(filenameSanitizer.Logger);
+}
+
+/// <summary>
+/// Resolves the specified folder (expanding "." to the current directory) and validates that it exists.
+/// </summary>
+/// <param name="folder">The folder path provided by the user.</param>
+/// <param name="filenameSanitizer">An instance of `IFilenameSanitizer` used to record errors in the logger.</param>
+/// <returns>The resolved folder path when valid; otherwise <c>null</c> when the folder is missing or inaccessible.</returns>
+static string? ResolveAndValidateFolder(string folder, IFilenameSanitizer filenameSanitizer)
+{
+    if (folder == ".")
+    {
+        folder = Environment.CurrentDirectory;
+    }
+
+    if (!Directory.Exists(folder))
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"Error: The specified folder '{folder}' does not exist or cannot access it.");
+        filenameSanitizer.Logger.Errors.Add($"The specified folder '{folder}' does not exist or cannot access it.");
+        Console.ResetColor();
+        return null;
+    }
+
+    return folder;
+}
+
+/// <summary>
+/// Performs the sanitization action depending on whether patterns were provided or not.
+/// </summary>
+/// <param name="folder">The target folder to operate on (used only for informational logging).</param>
+/// <param name="semiCommaSeparatedPatterns">Optional semicolon-separated patterns to remove from filenames.</param>
+/// <param name="filenameSanitizer">The filename sanitizer instance used to perform actions and record logs.</param>
+static void ProcessSanitization(string folder, string semiCommaSeparatedPatterns, IFilenameSanitizer filenameSanitizer)
+{
+    if (!string.IsNullOrEmpty(semiCommaSeparatedPatterns))
+    {
+        Console.WriteLine("Using the patterns provided in the command line parameter to remove:");
+        Console.WriteLine(semiCommaSeparatedPatterns);
+        filenameSanitizer.Logger.Info.Add("Using the patterns provided in the command line parameter to remove:");
+        filenameSanitizer.Logger.Info.Add(semiCommaSeparatedPatterns);
+
+        filenameSanitizer.RenameFilesRemovingPatterns(semiCommaSeparatedPatterns);
+    }
+    else
+    {
+        Console.WriteLine($"Sanitizing filenames in: {folder}");
+        filenameSanitizer.Logger.Info.Add($"Sanitizing filenames in: {folder}");
+        filenameSanitizer.RenameFilesToMeetOsRequirements();
+    }
+}
+
+/// <summary>
+/// Prints completion messages, shows log file path and waits for a key press.
+/// </summary>
+/// <param name="logger">The <see cref="OperationLogger"/> that contains the log file path and entries.</param>
+static void PrintCompletion(OperationLogger logger)
+{
     Console.WriteLine("Operation completed.");
-    Console.WriteLine($"Log file written to: {filenameSanitizer.Logger.LogFilePath}");
+    Console.WriteLine($"Log file written to: {logger.LogFilePath}");
     Console.WriteLine("Press any key to exit...");
     Console.ReadKey();
 }
 
+/// <summary>
+///  Parses the command-line arguments to extract the target folder and optional patterns for filename sanitization   
+///  The method handles different argument formats, allowing for a single folder argument or a folder followed by patterns separated by semicolons.
+/// </summary> <param name="args">The array of command-line arguments</param>
+/// <returns>A tuple containing the folder path and a semicolon-separated string of patterns</returns
 static (string folder, string semicommaSeparatedPatterns) ParseArguments(string[] args)
 {
     if (args.Length == 0)
     {
         return (string.Empty, string.Empty);
     }
+
     var separator = args.Length > 1 ? ";" : " ";
     var folder = args[0];
-    var semicommaSeparatedPatterns = args.Length > 1 ? string.Join(separator, args[1..]) : string.Empty;
+    var semiCommaSeparatedPatterns = args.Length > 1 ? string.Join(separator, args[1..]) : string.Empty;
 
-    return (folder, semicommaSeparatedPatterns);
+    return (folder, semiCommaSeparatedPatterns);
 }
 
+/// <summary>
+///    Displays the help information for using the FilenameSanitizerCli application, including usage instructions   
+///   and examples of command-line arguments.
+/// </summary>
+/// <remarks>
+///   The help information outlines the default settings file, the default replace patterns file, and the maximum filename length. It also provides usage examples for sanitizing filenames in the current directory, a specified folder, and removing specific patterns from filenames.
+/// </remarks>
 static void ShowHelp()
 {
     Console.WriteLine("FilenameSanitizerCli - Sanitize filenames for OS compatibility");
     Console.WriteLine("Default settings file: " + SanitizerConstants.SanitizerSettingsFile);
     Console.WriteLine("Default replace patterns file: " + SanitizerConstants.SanitizerReplacePatternsFile);
     Console.WriteLine("File path over " + SanitizerConstants.MaxPosixNameLength + " characters, will be cut off.");
-    
+
     Console.WriteLine("\nUsage:");
-    Console.WriteLine("  FilenameSanitizerCli                     - Sanitize all filenames in folder - in current directory.");
-    Console.WriteLine("  FilenameSanitizerCli <folder>            - Sanitize all filenames in folder, using settings in setting files.");
-    Console.WriteLine("  FilenameSanitizerCli <folder> <patterns> - Remove patterns from filenames, separated with semicolons");
+    Console.WriteLine(
+        "  FilenameSanitizerCli                     - Sanitize all filenames in folder - in current directory.");
+    Console.WriteLine(
+        "  FilenameSanitizerCli <folder>            - Sanitize all filenames in folder, using settings in setting files.");
+    Console.WriteLine(
+        "  FilenameSanitizerCli <folder> <patterns> - Remove patterns from filenames, separated with semicolons");
     Console.WriteLine("\nExamples:");
-    Console.WriteLine(@"  FilenameSanitizerCli .");
+    Console.WriteLine("  FilenameSanitizerCli .");
     Console.WriteLine(@"  FilenameSanitizerCli C:\MyFiles");
     Console.WriteLine(@"  FilenameSanitizerCli C:\MyFiles prefix-;_old;.bak");
 }
 
+/// <summary>
+///    Outputs the collected log entries to the console, with color coding for errors and warnings.
+/// </summary> <param name="logger">The OperationLogger instance containing the log entries to output</param>
+/// <remarks>
+///    Errors are displayed in red, warnings in yellow, and informational messages in the default console
+///   color. The method checks for the presence of each type of log entry before outputting, and resets the console color after displaying errors or warnings.
+/// </remarks>
 static void ConsoleOutputLogs(OperationLogger logger)
-{    
+{
     if (logger.HasErrors)
     {
         Console.ForegroundColor = ConsoleColor.Red;
@@ -103,6 +169,7 @@ static void ConsoleOutputLogs(OperationLogger logger)
         {
             Console.WriteLine($"Error: {error}");
         }
+
         Console.ResetColor();
     }
 
@@ -113,6 +180,7 @@ static void ConsoleOutputLogs(OperationLogger logger)
         {
             Console.WriteLine($"Warning: {warning}");
         }
+
         Console.ResetColor();
     }
 

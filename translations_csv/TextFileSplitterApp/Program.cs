@@ -4,50 +4,94 @@
 
 using TextFileSplitterApp;
 
-if (args.Length < 2)
+// Parse and validate arguments
+var (Success, InputFilepath, Lines) = ParseAndValidateArguments(args);
+if (!Success)
 {
-    Console.WriteLine("Usage: TextFileSplitter <input_file_path> <max_lines_per_file> <option: --csv>");
-    Console.WriteLine("Example: TextFileSplitter \"C:\\path\\to\\input.txt\" 1000 --csv");
-    return;
-}
-
-string inputFilepath = args[0];
-int lines;
-if (!int.TryParse(args[1], out lines))
-{
-    Console.WriteLine("Error: Invalid value for max_lines_per_file. Please provide an integer.");
-    return;
-}
-
-if (lines is < TextFileSplitter.MinLinesPerFile or > TextFileSplitter.MaxLinesPerFile1)
-{
-    Console.WriteLine("Error: max_lines_per_file must be between 2 and 10000.");
     return;
 }
 
 try
 {
-    TextFileSplitter splitter = new TextFileSplitter();
-    var splitFileInfo = await splitter.GetSplittingInformation(inputFilepath, lines);
+    var splitter = new TextFileSplitter();
+    var splitFileInfo = await splitter.GetSplittingInformation(InputFilepath, Lines);
 
-    if (!String.IsNullOrEmpty(splitFileInfo.Error))
+    if (!string.IsNullOrEmpty(splitFileInfo.Error))
     {
         Console.WriteLine($"File splitting cannot proceed due to error: {splitFileInfo.Error}");
         return;
     }
 
-    Console.WriteLine("Do you want to proceed with splitting the file? (y/n)");
-    var kbRes = Console.ReadLine();
-    if (kbRes == null || !kbRes.Equals("y", StringComparison.InvariantCultureIgnoreCase))
+    if (!ConfirmUserConsent())
     {
         Console.WriteLine("File splitting cancelled by user.");
         return;
     }
 
-    Console.WriteLine("Proceeding with file splitting...");
-    SplitFileOutcomeInfo splitResult = await splitter.SplitFileAsync(splitFileInfo);
+    await RunSplitAsync(new TextFileSplitter(), splitFileInfo, args);
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"An error occurred: {ex.Message}");
+}
 
-    Console.WriteLine($"File splitting complete.");
+/// <summary>
+/// Parses and validates command-line arguments for the application.
+/// Returns a tuple indicating success, the resolved input file path and the number of lines.
+/// </summary>
+/// <param name="args">Command-line arguments.</param>
+/// <returns>
+/// A tuple: (Success, InputFilepath, Lines). If Success is false the program should exit.
+/// </returns>
+static (bool Success, string InputFilepath, int Lines) ParseAndValidateArguments(string[] args)
+{
+    if (args.Length < 2)
+    {
+        Console.WriteLine("Usage: TextFileSplitter <input_file_path> <max_lines_per_file> <option: --csv>");
+        Console.WriteLine("Example: TextFileSplitter \"C:\\path\\to\\input.txt\" 1000 --csv");
+        return (false, string.Empty, 0);
+    }
+
+    var inputFilepath = args[0];
+    if (!int.TryParse(args[1], out var lines))
+    {
+        Console.WriteLine("Error: Invalid value for max_lines_per_file. Please provide an integer.");
+        return (false, string.Empty, 0);
+    }
+
+    if (lines is < TextFileSplitter.MinLinesPerFile or > TextFileSplitter.MaxLinesPerFile1)
+    {
+        Console.WriteLine($"Error: max_lines_per_file must be between {TextFileSplitter.MinLinesPerFile} and {TextFileSplitter.MaxLinesPerFile1}.");
+        return (false, string.Empty, 0);
+    }
+
+    return (true, inputFilepath, lines);
+}
+
+/// <summary>
+/// Prompts the user for confirmation to proceed with splitting.
+/// </summary>
+/// <returns><c>true</c> if the user confirms; otherwise <c>false</c>.</returns>
+static bool ConfirmUserConsent()
+{
+    Console.WriteLine("Do you want to proceed with splitting the file? (y/n)");
+    var kbRes = Console.ReadLine();
+    return kbRes != null && kbRes.Equals("y", StringComparison.InvariantCultureIgnoreCase);
+}
+
+/// <summary>
+/// Executes the split operation and optionally formats the output as CSV when requested.
+/// </summary>
+/// <param name="splitter">The <see cref="TextFileSplitter"/> used to perform the split.</param>
+/// <param name="splitFileInfo">The split request information.</param>
+/// <param name="args">Original command-line arguments (used to detect the --csv option).</param>
+/// <returns>A task that represents the asynchronous operation.</returns>
+static async Task RunSplitAsync(TextFileSplitter splitter, SplitRequestInfo splitFileInfo, string[] args)
+{
+    Console.WriteLine("Proceeding with file splitting...");
+    SplitProcessInfo splitResult = await splitter.SplitFileAsync(splitFileInfo);
+
+    Console.WriteLine("File splitting complete.");
     Console.WriteLine($"Details: {splitResult}");
 
     if (args.Length > 2 && args[2].Equals("--csv", StringComparison.InvariantCultureIgnoreCase))
@@ -56,8 +100,4 @@ try
         await splitter.FormatAsTranslationEntries(splitResult);
         Console.WriteLine("CSV formatting complete.");
     }
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"An error occurred: {ex.Message}");
 }

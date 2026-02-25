@@ -8,7 +8,7 @@ public class Sanitizer : ISanitizer
     private readonly ISanitizerSettingsLoader _sanitizerSettingsLoader;
 
     /// <summary>
-    /// Initializes a new instance of the Sanitizer class.
+    ///     Initializes a new instance of the Sanitizer class.
     /// </summary>
     /// <param name="sanitizerSettings">The settings loader to use for sanitization configuration.</param>
     /// <exception cref="ArgumentNullException">Thrown when sanitizerSettings is null.</exception>
@@ -22,7 +22,9 @@ public class Sanitizer : ISanitizer
     {
         // Empty or null filenames are considered sanitized as they'll be handled by optionalFileNameIfEmpty
         if (string.IsNullOrWhiteSpace(fileName))
+        {
             return true;
+        }
 
         var sanitized = SanitizeFileName(fileName);
         return sanitized == fileName;
@@ -44,11 +46,12 @@ public class Sanitizer : ISanitizer
         filename = SanitizeFilenameFromInvalidCharacters(filename, settings);
 
         // Clean up multiple consecutive underscores
-        filename = Regex.Replace(filename, "__+", settings.ReplacementCharacter.ToString());
+        filename = Regex.Replace(filename, "__+", settings.ReplacementCharacter);
 
         // Handle spaces and dots
         filename = filename.Trim(); // Remove leading/trailing spaces
-        filename = Regex.Replace(filename, @"\s+", settings.ReplacementCharacter.ToString()); // Replace multiple spaces with single underscore
+        filename = Regex.Replace(filename, @"\s+",
+            settings.ReplacementCharacter); // Replace multiple spaces with single underscore
         filename = Regex.Replace(filename, @"\.+", "."); // Replace multiple dots with single dot
         filename = filename.TrimEnd('.'); // Remove trailing dots (invalid in Windows)
 
@@ -71,38 +74,40 @@ public class Sanitizer : ISanitizer
     }
 
     /// <summary>
-    /// Removes spaces before and after file extension dots.
+    ///     Removes spaces before and after file extension dots.
     /// </summary>
     /// <param name="filename">The filename to process</param>
     /// <returns>The filename with cleaned up spaces around extension dots</returns>
     private static string TidyFileExtensionFromSpaces(string filename)
     {
-        bool hasOccurenceBeforeDot = Regex.IsMatch(filename, @"\s+\.");
+        var hasOccurenceBeforeDot = Regex.IsMatch(filename, @"\s+\.");
         while (hasOccurenceBeforeDot)
         {
             // Remove spaces before the file extension dot
             filename = Regex.Replace(filename, @"\s+\.", ".");
             hasOccurenceBeforeDot = Regex.IsMatch(filename, @"\s+\.");
         }
-        bool hasOccurenceAfterDot = Regex.IsMatch(filename, @"\.\s+");
-        while (hasOccurenceAfterDot) {
+
+        var hasOccurenceAfterDot = Regex.IsMatch(filename, @"\.\s+");
+        while (hasOccurenceAfterDot)
+        {
             // Remove spaces after the file extension dot
             filename = Regex.Replace(filename, @"\.\s+", ".");
             hasOccurenceAfterDot = Regex.IsMatch(filename, @"\.\s+");
-        }          
+        }
 
         return filename;
     }
 
     /// <summary>
-    /// Removes specified characters before and after file extension dots.
+    ///     Removes specified characters before and after file extension dots.
     /// </summary>
     /// <param name="character">The character to remove</param>
     /// <param name="filename">The filename to process</param>
     /// <returns>The filename with cleaned up characters around extension dots</returns>
     private static string TidyFileExtensionFromCharacter(char character, string filename)
     {
-        bool hasOccurenceBeforeDot = Regex.IsMatch(filename, character + @"+\.");
+        var hasOccurenceBeforeDot = Regex.IsMatch(filename, character + @"+\.");
         while (hasOccurenceBeforeDot)
         {
             // Remove underscores before the file extension dot
@@ -110,7 +115,7 @@ public class Sanitizer : ISanitizer
             hasOccurenceBeforeDot = Regex.IsMatch(filename, character + @"+\.");
         }
 
-        bool hasOccurenceAfterDot = Regex.IsMatch(filename, @"\." + character + "+");
+        var hasOccurenceAfterDot = Regex.IsMatch(filename, @"\." + character + "+");
         while (hasOccurenceAfterDot)
         {
             // Remove underscores after the file extension dot
@@ -122,14 +127,14 @@ public class Sanitizer : ISanitizer
     }
 
     /// <summary>
-    /// Adds an underscore prefix to Windows reserved filenames when running on Windows.
+    ///     Adds an underscore prefix to Windows reserved filenames when running on Windows.
     /// </summary>
     /// <param name="filename">The filename to check</param>
     /// <returns>The filename with an underscore prefix if needed</returns>
     private static string IncludeUnderscoreForWindowsReservedNames(string filename)
     {
         if (Environment.OSVersion.Platform != PlatformID.Win32NT)
-        { 
+        {
             return filename; // Only apply this check for Windows
         }
 
@@ -143,25 +148,39 @@ public class Sanitizer : ISanitizer
     }
 
     /// <summary>
-    /// Cuts off the filename if it exceeds the maximum length for POSIX systems.
+    ///     Cuts off the filename if it exceeds the maximum length for POSIX systems.
     /// </summary>
     /// <remarks>File extensions are preserved, but the base filename is truncated if necessary.</remarks>
-    /// <param name="filename"></param>
-    /// <returns>The original file name if not too long, or the cut off filename.</returns>
-    private static string CutOffTooLong(string filename)
+    /// <param name="filenameInput"></param>
+    /// <returns>The original file name if not too long, or the cut-off filename.</returns>
+    private static string CutOffTooLong(string filenameInput)
     {
-        if (filename.Length > SanitizerConstants.MaxPosixNameLength)
+        var filename = filenameInput;
+        if (filename.Length <= SanitizerConstants.MaxPosixNameLength)
         {
-            var extension = Path.GetExtension(filename);
-            var baseFileName = Path.GetFileNameWithoutExtension(filename);
-            filename = baseFileName.Substring(0, SanitizerConstants.MaxPosixNameLength - extension.Length) + extension;
+            return filename;
+        }
+
+        var extension = Path.GetExtension(filename);
+        var baseFileName = Path.GetFileNameWithoutExtension(filename);
+        try
+        {
+            filename = baseFileName[..(SanitizerConstants.MaxPosixNameLength - extension.Length)] + extension;
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            // 'startIndex' plus 'length' indicates a position not within this instance.
+            // -or-
+            // 'startIndex' or 'length' is less than zero.
+            Console.WriteLine($"Error cutting off filename: {exception.Message}");
+            return filenameInput;
         }
 
         return filename;
     }
 
     /// <summary>
-    /// Replaces invalid filename characters with the configured replacement character.
+    ///     Replaces invalid filename characters with the configured replacement character.
     /// </summary>
     /// <param name="filename">The filename to sanitize</param>
     /// <param name="settings">The sanitizer settings to use</param>
@@ -169,35 +188,37 @@ public class Sanitizer : ISanitizer
     private static string SanitizeFilenameFromInvalidCharacters(string filename, ISanitizerSetting settings)
     {
         // Define the invalid characters, including POSIX unsafe chars
-        char[] invalidChars = Path.GetInvalidFileNameChars()
-            .Concat(new[]
-            {
-                '!', '&', '(', ')', '{', '}', '[', ']', '<', '>', '|',
-                '?', '=', '`', '\'', '¨', '~', '^', '*', '@', '£', '€', '$', ';', '-',
-                '\0', '/', '\\', // Additional POSIX unsafe characters
-            })
-            .Where(c => c.ToString() != settings.ReplacementCharacter && !settings.ExcludedCharacters.Contains(c.ToString())) // Remove the replacement character from the list
+        var invalidChars = Path.GetInvalidFileNameChars()
+            .Concat([
+                '!', '&', '(', ')', '{', '}', '[', ']', '<', '>', '|', '?', '=', '`', '\'', '¨', '~', '^', '*', '@',
+                '£', '€', '$', ';', '-', '\0', '/', '\\' // Additional POSIX unsafe characters
+            ])
+            .Where(c => c.ToString() != settings.ReplacementCharacter &&
+                        !settings.ExcludedCharacters
+                            .Contains(c.ToString())) // Remove the replacement character from the list
             .ToArray();
 
         // Replace invalid characters with settings.ReplacementCharacter
-        filename = invalidChars.Aggregate(filename, (current, c) => current.Replace(c.ToString(), settings.ReplacementCharacter));
+        filename = invalidChars.Aggregate(filename,
+            (current, c) => current.Replace(c.ToString(), settings.ReplacementCharacter));
         filename = CutOffTooLong(filename);
         return filename;
     }
 
     /// <summary>
-    /// Sanitizes the filename using a default settings file.
-    /// The file should contain replacement patterns in the format "pattern;replacement".
+    ///     Sanitizes the filename using a default settings file.
+    ///     The file should contain replacement patterns in the format "pattern;replacement".
     /// </summary>
     /// <param name="fileName"></param>
     /// <returns></returns>
     private string SanitizeWithSettings(string fileName)
     {
-        var replacePatternsSettingsFilename = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SanitizerConstants.SanitizerReplacePatternsFile);
+        var replacePatternsSettingsFilename = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+            SanitizerConstants.SanitizerReplacePatternsFile);
         if (!File.Exists(replacePatternsSettingsFilename))
         {
             return fileName; // Return original filename if settings file does not exist
-        }        
+        }
 
         // Check if the file is writable and readable
         // Read replacement patterns from the file
@@ -215,11 +236,18 @@ public class Sanitizer : ISanitizer
         {
             var toBeReplaced = line.Trim();
             var settings = _sanitizerSettingsLoader.LoadFromFile(SanitizerConstants.SanitizerSettingsFile);
-            fileName = fileName.Replace(toBeReplaced, settings.ReplacementCharacter.ToString()); // Replace the pattern with the replacement character
+            fileName = fileName.Replace(toBeReplaced,
+                settings.ReplacementCharacter); // Replace the pattern with the replacement character
         }
+
         return fileName;
     }
 
+    /// <summary>
+    ///    Filters out non-printable characters from the filename, keeping only characters that are considered printable in ASCII.
+    /// </summary>
+    /// <param name="fileName">The filename to filter</param>
+    /// <returns>The filtered filename</returns>
     private static string FilterOutNonPrintableCharacters(string fileName)
     {
         if (string.IsNullOrEmpty(fileName))

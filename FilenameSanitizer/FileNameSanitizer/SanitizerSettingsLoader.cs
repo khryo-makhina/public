@@ -1,19 +1,18 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace FilenameSanitizer;
 
 /// <summary>
-/// Default implementation for loading sanitizer settings from JSON files.
+///     Default implementation for loading sanitizer settings from JSON files.
 /// </summary>
 public class SanitizerSettingsLoader : ISanitizerSettingsLoader
 {
+    private readonly string _baseDirectory;
     private readonly IFileSystem _fileSystem;
     private readonly ILogger _logger;
-    private readonly string _baseDirectory;
 
     /// <summary>
-    /// Initializes a new instance of the SanitizerSettingsLoader class.
+    ///     Initializes a new instance of the SanitizerSettingsLoader class.
     /// </summary>
     /// <param name="fileSystem">The file system to use for file operations</param>
     /// <param name="logger">The logger to use for logging</param>
@@ -34,6 +33,11 @@ public class SanitizerSettingsLoader : ISanitizerSettingsLoader
         return settings;
     }
 
+    /// <summary>
+    ///    Deserializes the sanitizer settings from the specified file path. If the file does not exist or deserialization fails, returns default settings.
+    /// </summary>
+    /// <param name="filePath">The path to the settings file</param>
+    /// <returns>The deserialized settings or default settings if deserialization fails</returns>
     private ISanitizerSetting DeserializeSettings(string filePath)
     {
         var settings = new SanitizerSetting();
@@ -46,16 +50,14 @@ public class SanitizerSettingsLoader : ISanitizerSettingsLoader
         try
         {
             var jsonContent = _fileSystem.ReadAllText(filePath);
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var deserializedSettings = JsonSerializer.Deserialize<SanitizerSetting>(jsonContent, options);
-            if(deserializedSettings == null || deserializedSettings.IsEmpty())
+            if (deserializedSettings == null || deserializedSettings.IsEmpty())
             {
                 _logger.LogError($"Deserialization of settings from {filePath} returned null for JSON: " + jsonContent);
                 return SanitizerSetting.EmptyInstance; // Return empty instance if deserialization fails
             }
+
             settings = deserializedSettings; // Use deserialized settings or default if deserialization fails
         }
         catch (Exception ex)

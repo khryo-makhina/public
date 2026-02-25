@@ -1,7 +1,7 @@
 ﻿namespace TranslationTools;
 
 /// <summary>
-/// Provides methods to find and read translation CSV files.
+///     Provides methods to find and read translation CSV files.
 /// </summary>
 public class TranslationsFinder
 {
@@ -9,7 +9,7 @@ public class TranslationsFinder
     private const string TranslationCsvFilename = "translations.csv";
 
     /// <summary>
-    /// Finds the .csv file path by searching parent directories or using settings.
+    ///     Finds the .csv file path by searching parent directories or using settings.
     /// </summary>
     /// <returns>Full path to the .csv file</returns>
     public string FindTranslationsCsvFilepath(string csvFilePath = "")
@@ -19,7 +19,8 @@ public class TranslationsFinder
             return csvFilePath;
         }
 
-        bool isTranslationEntryTranslations = String.IsNullOrEmpty(csvFilePath) || csvFilePath.Contains(TranslationCsvFilename);
+        var isTranslationEntryTranslations =
+            string.IsNullOrEmpty(csvFilePath) || csvFilePath.Contains(TranslationCsvFilename);
         if (!isTranslationEntryTranslations)
         {
             ConsoleLogger.WriteLine("Using " + TranslationCsvFilename + " file at: " + csvFilePath);
@@ -28,143 +29,196 @@ public class TranslationsFinder
 
         ConsoleLogger.WriteLine($"Resolving {TranslationCsvFilename} file path from settings ...");
         var translationFilepath = GetTranslationFilePathFromSettings();
-        if (!String.IsNullOrEmpty(translationFilepath))
+        if (!string.IsNullOrEmpty(translationFilepath))
         {
-            if(!File.Exists(translationFilepath))
+            if (!File.Exists(translationFilepath))
             {
-                ConsoleLogger.WriteLine($"Warning: The translation file path from settings does not exist: {translationFilepath}");
+                ConsoleLogger.WriteLine(
+                    $"Warning: The translation file path from settings does not exist: {translationFilepath}");
             }
             else
             {
                 ConsoleLogger.WriteLine($"Using {TranslationCsvFilename} file at: {translationFilepath}");
                 return translationFilepath;
-            }            
+            }
         }
 
         ConsoleLogger.WriteLine($"Could not determine {TranslationCsvFilename} file path from settings.");
         ConsoleLogger.WriteLine($"Resolving {TranslationCsvFilename} file path from parent directories...");
-        
-        // Check current working directory first
-        if(File.Exists(TranslationCsvFilename))
+
+        if (TryFindInWorkingDirectory(out var foundPath))
         {
-            translationFilepath = Path.GetFullPath(TranslationCsvFilename);
-            ConsoleLogger.WriteLine($"Found {TranslationCsvFilename} in current working directory at: {translationFilepath}");
-            return translationFilepath;
+            return foundPath;
         }
 
-        // Try to find the repository folder named "translations_csv" by climbing parents
+        if (TryFindInParentDirectories(out foundPath))
+        {
+            return foundPath;
+        }
+
+        if (TryFallbackPath(out foundPath))
+        {
+            return foundPath;
+        }
+
+        return string.Empty;
+    }
+
+    /// <summary>
+    ///     Reads the translation file path from settings.json if available.
+    /// </summary>
+    /// <returns>Translation file path or empty string if not found</returns>
+    public string GetTranslationFilePathFromSettings()
+    {
+        var settingsPath = Path.Combine(AppContext.BaseDirectory, SettingsJsonFilename);
+        var settingsJsonExists = File.Exists(settingsPath);
+        if (!settingsJsonExists)
+        {
+            ConsoleLogger.WriteLine($"Settings file not found at: {settingsPath}");
+            return string.Empty;
+        }
+
+        var json = File.ReadAllText(settingsPath);
+        return ParseTranslationPathFromSettingsJson(json);
+    }
+
+    /// <summary>
+    ///     Reads all lines from the .csv file.
+    /// </summary>
+    /// <param name="translationFilepath"></param>
+    /// <param name="startingLineNumber"></param>
+    /// <returns>A list of strings representing the lines in the CSV file</returns>
+    public string[] GetTranslationsLines(string translationFilepath, int startingLineNumber = -1)
+    {
+        if (!File.Exists(translationFilepath))
+        {
+            return [];
+        }
+        return ReadTranslationsLines(translationFilepath, startingLineNumber);
+    }
+
+    /// <summary>
+    ///     Attempts to find the translation CSV in the current working directory.
+    /// </summary>
+    private bool TryFindInWorkingDirectory(out string path)
+    {
+        path = string.Empty;
+        if (!File.Exists(TranslationCsvFilename))
+        {
+            return false;
+        }
+
+        path = Path.GetFullPath(TranslationCsvFilename);
+        ConsoleLogger.WriteLine($"Found {TranslationCsvFilename} in current working directory at: {path}");
+        return true;
+    }
+
+    /// <summary>
+    ///     Attempts to find the translation CSV by climbing parent directories starting from the base directory.
+    /// </summary>
+    private bool TryFindInParentDirectories(out string path)
+    {
+        path = string.Empty;
         ConsoleLogger.WriteLine($"Searching for of folder of file {TranslationCsvFilename} ...");
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir != null)
         {
             if (string.Equals(dir.Name, TranslationCsvFilename, StringComparison.OrdinalIgnoreCase))
             {
-                translationFilepath = Path.Combine(dir.FullName, TranslationCsvFilename);
+                path = Path.Combine(dir.FullName, TranslationCsvFilename);
                 break;
             }
+
             dir = dir.Parent;
         }
 
-        if (!String.IsNullOrEmpty(translationFilepath))
+        if (string.IsNullOrEmpty(path))
         {
-            if(!File.Exists(translationFilepath))
-            {
-                ConsoleLogger.WriteLine($"Warning: The found translation file path does not exist: {translationFilepath}");
-            }   
-            else
-            {   
-                ConsoleLogger.WriteLine($"Found {TranslationCsvFilename} at: {translationFilepath}");
-                return translationFilepath; 
-            }
+            return false;
         }
 
-        // Fallback to previous behavior (parent of current working dir)
-        var fallbackPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", TranslationCsvFilename));
-        if(!File.Exists(fallbackPath))
+        if (!File.Exists(path))
         {
-            ConsoleLogger.WriteLine($"Warning: The fallback translation file path does not exist: {fallbackPath}");
-            return String.Empty;
-        }   
-        else
-        {   
-            ConsoleLogger.WriteLine($"Using fallback {TranslationCsvFilename} file at: {fallbackPath}");
-            return fallbackPath; 
-        }        
+            ConsoleLogger.WriteLine($"Warning: The found translation file path does not exist: {path}");
+            return false;
+        }
+
+        ConsoleLogger.WriteLine($"Found {TranslationCsvFilename} at: {path}");
+        return true;
     }
 
     /// <summary>
-    /// Reads the translation file path from settings.json if available.
+    ///     Attempts the fallback path (parent of the current working directory) for the translation CSV.
     /// </summary>
-    /// <returns>Translation file path or empty string if not found</returns>
-    public string GetTranslationFilePathFromSettings()
+    private bool TryFallbackPath(out string path)
     {
-        var settingsPath = Path.Combine(AppContext.BaseDirectory, SettingsJsonFilename);
-        bool settingsJsonExists = File.Exists(settingsPath);
-        if (!settingsJsonExists)
+        path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", TranslationCsvFilename));
+        if (!File.Exists(path))
         {
-            ConsoleLogger.WriteLine($"Settings file not found at: {settingsPath}");
-            return String.Empty;
+            ConsoleLogger.WriteLine($"Warning: The fallback translation file path does not exist: {path}");
+            path = string.Empty;
+            return false;
         }
 
-        var json = File.ReadAllText(settingsPath);
+        ConsoleLogger.WriteLine($"Using fallback {TranslationCsvFilename} file at: {path}");
+        return true;
+    }
+
+    /// <summary>
+    ///     Parses the translation file path from the provided settings JSON content.
+    /// </summary>
+    private string ParseTranslationPathFromSettingsJson(string json)
+    {
         var startIndex = json.IndexOf("\"translation_filepath\"", StringComparison.OrdinalIgnoreCase);
         if (startIndex == -1)
         {
-            ConsoleLogger.WriteLine($"Translation file path entry not found in settings.");
-            return String.Empty;
-        }   
-        
-        startIndex = json.IndexOf(":", startIndex) + 1;
-        var endIndex = json.IndexOfAny(new[] { ',', '}', '\n', '\r' }, startIndex);
-        var pathValue = json.Substring(startIndex, endIndex - startIndex).Trim().Trim('"');
-
-        if(string.IsNullOrWhiteSpace(pathValue))
-        {
-            ConsoleLogger.WriteLine($"Translation file path entry is empty in settings.");
-            return String.Empty;
+            ConsoleLogger.WriteLine("Translation file path entry not found in settings.");
+            return string.Empty;
         }
-        
-        string tidyPath = Path.GetFullPath(pathValue);
+
+        startIndex = json.IndexOf(':', startIndex) + 1;
+        var endIndex = json.IndexOfAny([',', '}', '\n', '\r'], startIndex);
+        var pathValue = json[startIndex..endIndex].Trim().Trim('"');
+
+        if (string.IsNullOrWhiteSpace(pathValue))
+        {
+            ConsoleLogger.WriteLine("Translation file path entry is empty in settings.");
+            return string.Empty;
+        }
+
+        var tidyPath = Path.GetFullPath(pathValue);
+
         if (!string.IsNullOrWhiteSpace(tidyPath))
         {
             ConsoleLogger.WriteLine($"Translation file path found in settings: {tidyPath}");
             return tidyPath;
-        }        
+        }
 
-        return String.Empty;
+        return string.Empty;
     }
 
     /// <summary>
-    /// Reads all lines from the .csv file.
+    ///     Reads the lines from the translation CSV, honoring an optional starting line number.
     /// </summary>
-    /// <param name="translationFilepath"></param>
-    /// <returns>A list of strings representing the lines in the CSV file</returns>
-    public string[] GetTranslationsLines(string translationFilepath, int startinglineNumber = -1)
+    private string[] ReadTranslationsLines(string translationFilepath, int startingLineNumber)
     {
-        if (!File.Exists(translationFilepath))
+        if (startingLineNumber > 0)
         {
-            return Array.Empty<string>();
+            ConsoleLogger.WriteLine($"Starting line number {startingLineNumber} requested.");
+            var allLines = File.ReadAllLines(translationFilepath);
+            if (startingLineNumber < allLines.Length)
+            {
+                ConsoleLogger.WriteLine($"Reading {startingLineNumber}/{allLines.Length}");
+                var array = allLines.Skip(startingLineNumber);
+                return [.. array]; // to array
+            }
+
+            ConsoleLogger.WriteLine(
+                $"Warning: Start line number {startingLineNumber} is out of range of {allLines.Length}.");
         }
 
-        IEnumerable<string> array;
-        if (startinglineNumber > 0)
-        {
-            ConsoleLogger.WriteLine($"Starting line number {startinglineNumber} requested.");
-            var allLines = File.ReadAllLines(translationFilepath);
-            if (startinglineNumber < allLines.Count())
-            {
-                ConsoleLogger.WriteLine($"Reading {startinglineNumber}/{allLines.Count()}");
-                array = allLines.Skip(startinglineNumber);
-                return [.. array];//to array
-            }
-            else
-            {
-                ConsoleLogger.WriteLine($"Warning: Start line number {startinglineNumber} is out of range of {allLines.Count()}.");
-            }
-        }
-        ConsoleLogger.WriteLine($"Loading all entries.");
-        array = File.ReadAllLines(translationFilepath);
-        return [.. array];//to array
+        ConsoleLogger.WriteLine("Loading all entries.");
+        var full = File.ReadAllLines(translationFilepath);
+        return [.. full]; // to array
     }
 }
-

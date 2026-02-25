@@ -1,13 +1,5 @@
-﻿using CsvHelper;
-using Shouldly;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Shouldly;
 using TranslationTools.OllamaApi;
-using Xunit;
 
 namespace TranslationTools.Tests;
 
@@ -18,54 +10,78 @@ public class OllamaTranslatorTests : IDisposable
     private readonly string _testOutputCsv = Path.Combine(AppContext.BaseDirectory, "test_output.csv");
     private readonly string _testSampleCsv = Path.Combine(AppContext.BaseDirectory, "sample_input.csv");
     private readonly OllamaTranslator _translator;
-    private readonly TestTranslationService _mockService;
+    private bool _disposed;
 
     public OllamaTranslatorTests()
     {
-        _mockService = new TestTranslationService();
-        _translator = new OllamaTranslator(_mockService);
+        var mockService = new TestTranslationService();
+        _translator = new OllamaTranslator(mockService);
         CreateTestFiles();
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            // Clean up managed resources
+            CleanupFiles();
+        }
+        // Clean up unmanaged resources if any (none in this case)
+        _disposed = true;
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 
     [Fact]
     public async Task TestMockTranslation()
     {
+        // Given a test translation service
         var service = new TestTranslationService();
+
+        // When translating "Hello"
         var result = await service.TranslateAsync("Hello");
+
+        // Then the result should be the Spanish greeting
         Assert.Equal("Hola", result);
     }
 
     [Fact]
     public async Task TestUnknownTranslation()
     {
+        // Given a test translation service
         var service = new TestTranslationService();
+
+        // When translating an unknown token
         var result = await service.TranslateAsync("Unknown");
+
+        // Then the service should return the mock translation indicator
         Assert.Equal("MockTranslation:Unknown", result);
     }
 
     [Fact]
     public async Task ProcessCsvAsync_ShouldProcessInputAndCreateOutputFile()
     {
-        // Arrange
+        // Given a translator using the test translation service and a temp CSV input
         var translator = new OllamaTranslator(new TestTranslationService());
-
-        // Create test input file
-        var testInput = Path.Combine(Path.GetTempPath(), "test_input_" + Guid.NewGuid() + ".csv");
-        var testOutput = Path.Combine(Path.GetTempPath(), "test_output_" + Guid.NewGuid() + ".csv");
+        var (testInput, testOutput) = CreateTempInputOutputCsv("SourceText,TargetText\nhello,\nworld,\n");
 
         try
         {
-            // Setup test data with correct headers
-            File.WriteAllText(testInput, "SourceText,TargetText\nhello,\nworld,\n");
-
-            // Act
+            // When processing the CSV
             await translator.ProcessCsvAsync(testInput, testOutput);
 
-            // Assert
+            // Then an output file should be created containing the translated lines
             Assert.True(File.Exists(testOutput), "Output file was not created");
-            var outputContent = File.ReadAllText(testOutput);
-
-            // Verify output has correct headers and content
+            var outputContent = await File.ReadAllTextAsync(testOutput);
             Assert.Contains("SourceText", outputContent);
             Assert.Contains("TargetText", outputContent);
             Assert.Contains("hello", outputContent);
@@ -73,30 +89,26 @@ public class OllamaTranslatorTests : IDisposable
         }
         finally
         {
-            // Cleanup
-            if (File.Exists(testInput)) File.Delete(testInput);
-            if (File.Exists(testOutput)) File.Delete(testOutput);
+            DeleteIfExists(testInput);
+            DeleteIfExists(testOutput);
         }
     }
 
     [Fact]
     public async Task BatchTranslateAsync_ShouldTranslateAllEntries()
     {
-        // Arrange
+        // Given a set of CSV entries to translate
         var testEntries = new List<CsvEntry>
         {
-            new CsvEntry { SourceText = "Hello" },
-            new CsvEntry { SourceText = "World" },
-            new CsvEntry { SourceText = "Test" }
+            new() { SourceText = "Hello" }, new() { SourceText = "World" }, new() { SourceText = "Test" }
         };
 
-        // Act
-        var translated = await _translator.BatchTranslateAsync(testEntries);
+        // When translating the batch
+        List<CsvEntry> translated = await _translator.BatchTranslateAsync(testEntries);
 
-        // Assert
+        // Then all entries should be translated
         translated.ShouldNotBeNull();
         translated.Count.ShouldBe(3);
-
         translated[0].TargetText.ShouldBe("Hola");
         translated[1].TargetText.ShouldBe("Mundo");
         translated[2].TargetText.ShouldBe("Prueba");
@@ -106,18 +118,18 @@ public class OllamaTranslatorTests : IDisposable
     [Fact]
     public async Task BatchTranslateAsync_ShouldRespectMaxParallelTasks()
     {
-        // Arrange
+        // Given a translator and 10 entries
         var translator = new OllamaTranslator();
-        var entries = Enumerable.Range(1, 10)
+        List<CsvEntry> entries = Enumerable.Range(1, 10)
             .Select(i => new CsvEntry { SourceText = $"Text {i}", TargetText = "" })
             .ToList();
 
-        // Act
-        var translatedEntries = await translator.BatchTranslateAsync(entries, maxParallelTasks: 3);
+        // When translating with a max parallelism of 3
+        List<CsvEntry> translatedEntries = await translator.BatchTranslateAsync(entries, 3);
 
-        // Assert
+        // Then all entries should be translated
         translatedEntries.Count.ShouldBe(10);
-        foreach (var entry in translatedEntries)
+        foreach (CsvEntry entry in translatedEntries)
         {
             entry.TargetText.ShouldNotBeNullOrWhiteSpace();
         }
@@ -126,34 +138,29 @@ public class OllamaTranslatorTests : IDisposable
     [Fact]
     public async Task ProcessCsvAsync_ShouldHandleEmptyInputFile()
     {
-        // Arrange
+        // Given a translator and an empty input file
         var translator = new OllamaTranslator();
-        var emptyInputFile = "empty_input.csv";
+        var emptyInputFile = CreateTempEmptyFile();
 
-        // Create empty file
-        File.WriteAllText(emptyInputFile, "");
-
-        // Act & Assert
+        // When processing the empty file
         await Should.NotThrowAsync(() =>
             translator.ProcessCsvAsync(emptyInputFile, "empty_output.csv"));
 
+        // Then an output file should still be created
         File.Exists("empty_output.csv").ShouldBeTrue();
     }
 
     [Fact]
     public async Task BatchTranslateAsync_ShouldHandleSingleEntry()
     {
-        // Arrange
+        // Given a translator and a single entry
         var translator = new OllamaTranslator();
-        var entries = new List<CsvEntry>
-            {
-                new CsvEntry { SourceText = "Single test", TargetText = "" }
-            };
+        var entries = new List<CsvEntry> { new() { SourceText = "Single test", TargetText = "" } };
 
-        // Act
-        var translatedEntries = await translator.BatchTranslateAsync(entries);
+        // When translating the single entry
+        List<CsvEntry> translatedEntries = await translator.BatchTranslateAsync(entries);
 
-        // Assert
+        // Then the entry should be translated
         translatedEntries.Count.ShouldBe(1);
         translatedEntries[0].TargetText.ShouldNotBeNullOrWhiteSpace();
     }
@@ -183,36 +190,23 @@ One more,,";
     [Fact]
     public async Task ProcessCsvAsync_WithNonExistentInput_ThrowsFileNotFoundException()
     {
-        // Arrange
+        // Given a translator using the test translation service and a non-existent input path
         var translator = new OllamaTranslator(new TestTranslationService());
-
-        // Create a path that definitely doesn't exist
         var nonExistentPath = Path.Combine(Path.GetTempPath(), "DefinitelyNonexistentFile12345.csv");
 
-        // Act & Assert
+        // When processing the non-existent file
         var exception = await Assert.ThrowsAsync<FileNotFoundException>(() =>
             translator.ProcessCsvAsync(nonExistentPath, _testOutputCsv));
 
-        // Optional: Verify the exception message contains the expected path
+        // Then a FileNotFoundException should be thrown referencing the expected path
         Assert.Contains(nonExistentPath, exception.Message);
-    }
-
-    public void Dispose()
-    {
-        // Clean up test files (synchronous)
-        CleanupFiles();
-
     }
 
     private void CleanupFiles()
     {
         var filesToDelete = new[]
         {
-            _testInputCsv,
-            _testOutputCsv,
-            _testSampleCsv,
-            "empty_input.csv",
-            "empty_output.csv"
+            _testInputCsv, _testOutputCsv, _testSampleCsv, "empty_input.csv", "empty_output.csv"
         };
 
         foreach (var file in filesToDelete)
@@ -220,7 +214,9 @@ One more,,";
             try
             {
                 if (File.Exists(file))
+                {
                     File.Delete(file);
+                }
             }
             catch (Exception ex)
             {
@@ -230,6 +226,33 @@ One more,,";
         }
     }
 
+    // Helper to create temp input and output file paths and write provided content to the input
+    private (string inputPath, string outputPath) CreateTempInputOutputCsv(string content)
+    {
+        var input = Path.Combine(Path.GetTempPath(), "test_input_" + Guid.NewGuid() + ".csv");
+        var output = Path.Combine(Path.GetTempPath(), "test_output_" + Guid.NewGuid() + ".csv");
+        File.WriteAllText(input, content);
+        return (input, output);
+    }
+
+    // Helper to create an empty temp file
+    private string CreateTempEmptyFile()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "empty_input_" + Guid.NewGuid() + ".csv");
+        File.WriteAllText(path, string.Empty);
+        return path;
+    }
+
+    // Helper to delete a file if it exists
+    private void DeleteIfExists(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch
+        {
+            // ignore cleanup failures in tests
+        }
+    }
 }
-
-

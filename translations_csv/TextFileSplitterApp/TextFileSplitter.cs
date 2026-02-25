@@ -1,113 +1,147 @@
-﻿using System.Text;
+﻿namespace TextFileSplitterApp;
 
-namespace TextFileSplitterApp;
-
+/// <summary>
+/// Provides methods to split large text files into smaller files and
+/// to format split outputs as translation entries.
+/// </summary>
 public class TextFileSplitter
 {
+    /// <summary>
+    /// Default maximum number of lines per output file (legacy constant).
+    /// </summary>
     public const int MaxLinesPerFile1 = 10000;
+
+    /// <summary>
+    /// Minimum number of lines required to perform a split.
+    /// </summary>
     public const int MinLinesPerFile = 2;
 
-    public async Task<SplitFileOutcomeInfo> SplitFileAsync(SplitFileInfo splitFileInfo)
+    /// <inheritdoc />
+    public async Task<SplitProcessInfo> SplitFileAsync(SplitRequestInfo splitRequestInfo)
     {
-        var splitInfo = new SplitFileOutcomeInfo(splitFileInfo);
+        var splitProcessInfo = new SplitProcessInfo(splitRequestInfo);
 
-        var initError = splitInfo.Initialize();
+        var initError = splitProcessInfo.Initialize();
 
         if (!string.IsNullOrEmpty(initError))
         {
-            return splitInfo;
+            return splitProcessInfo;
         }
 
-        using var reader = new StreamReader(splitFileInfo.InputFilepath);
+        using var reader = new StreamReader(splitProcessInfo.InputFilepath);
 
-        splitInfo.FileCount += 1;
-        var newFileName = splitInfo.GetNewFilename();
-        FileStream outputFileStream = new FileStream(newFileName, FileMode.Create);
-        StreamWriter outputFileWriter = new StreamWriter(outputFileStream);
+        FileStream? outputFileStream = null;
+        StreamWriter? outputFileWriter = null;
+        var currentOutputLineCount = 0;
 
         try
         {
-            var line = await reader.ReadLineAsync() ?? string.Empty;
-
-            if (line.Length < splitInfo.SplitLinesPerFile)
+            // Read lines until EOF (ReadLineAsync returns null at EOF).
+            while (true)
             {
-                return splitInfo;
-            }
+                var line = await reader.ReadLineAsync();
+                if (line is null)
+                {
+                    // EOF reached
+                    break;
+                }
 
-            while (!string.IsNullOrEmpty(line))
-            {
-                await outputFileWriter!.WriteLineAsync(line);
+                // Lazily create writer for the first output file or when starting a new file
+                if (outputFileWriter is null)
+                {
+                    var newFileName = splitProcessInfo.GetNewFilename();
+                    outputFileStream = new FileStream(newFileName, FileMode.Create, FileAccess.Write, FileShare.None);
+                    outputFileWriter = new StreamWriter(outputFileStream);
+                }
 
-                splitInfo.LineNumber += 1;
+                await outputFileWriter.WriteLineAsync(line);
+                splitProcessInfo.LineNumber += 1;
+                currentOutputLineCount += 1;
 
-                if (splitInfo.LineNumber % splitFileInfo.SplitLinesPerFile == 0)
+                // When we hit the configured lines per file, rotate to the next file
+                if (currentOutputLineCount >= Math.Max(splitProcessInfo.SplitLinesPerFile, MinLinesPerFile))
                 {
                     try
                     {
-                        outputFileWriter.Flush();
-
-                        outputFileStream?.Close();
-                        outputFileWriter?.Close();
-
-                        splitInfo.FileCount += 1;
-                        newFileName = splitInfo.GetNewFilename();
-                        outputFileStream = new FileStream(newFileName, FileMode.Create);
-                        outputFileWriter = new StreamWriter(outputFileStream);
+                        await outputFileWriter.FlushAsync();
+                        outputFileWriter.Dispose();
+                        outputFileWriter = null;
+                        outputFileStream?.Dispose();
+                        outputFileStream = null;
                     }
-                    catch (Exception)
+                    catch (Exception e)
                     {
-
+                        splitProcessInfo.Error.Add(e.Message);
                     }
-                }
 
-                line = await reader.ReadLineAsync() ?? string.Empty;
+                    currentOutputLineCount = 0;
+                }
             }
 
-            splitInfo.GetNewFilename();
-
+            // Ensure the last writer is flushed and disposed
+            if (outputFileWriter is not null)
+            {
+                await outputFileWriter.FlushAsync();
+                outputFileWriter.Dispose();
+                outputFileStream?.Dispose();
+            }
         }
         finally
         {
-            outputFileWriter?.Close();
-            outputFileStream?.Close();
+            outputFileWriter?.Dispose();
+            outputFileStream?.Dispose();
 
-            reader?.Close();
+            reader.Close();
         }
 
-        return splitInfo;
+        return splitProcessInfo;
     }
 
-    public async Task<int> GetTotalLinesAsync(string filePath)
+    /// <summary>
+    /// Counts the total number of non-empty lines in the specified file.
+    /// This is an internal helper and does not perform public validation.
+    /// </summary>
+    /// <param name="filePath">Path to the file to count lines for.</param>
+    /// <returns>Total number of non-empty lines in the file.</returns>
+    private async Task<int> GetTotalLinesAsync(string filePath)
     {
-        int lineCount = 0;
-        using (var reader = new StreamReader(filePath))
+        var lineCount = 0;
+        using var reader = new StreamReader(filePath);
+        while (true)
         {
-            string line = await reader.ReadLineAsync() ?? string.Empty;
-            while (!string.IsNullOrEmpty(line))
+            var line = await reader.ReadLineAsync();
+            if (line is null)
             {
-                lineCount++;
+                break;
             }
+
+            // Count every line read, including empty lines, to avoid losing content
+            lineCount++;
         }
+
         return lineCount;
     }
 
-    public async Task<SplitFileInfo> GetSplittingInformation(string filePath, int maxLinesPerFile)
+    /// <inheritdoc />
+    public async Task<SplitRequestInfo> GetSplittingInformation(string filePath, int maxLinesPerFile)
     {
         try
         {
             if (!File.Exists(filePath))
             {
-                return new SplitFileInfo() { Error = $"Error: File not found at path: {filePath}" };
+                return new SplitRequestInfo { Error = $"Error: File not found at path: {filePath}" };
             }
 
-            int totalLines = await GetTotalLinesAsync(filePath);
-            int estimatedFileCount = (int)Math.Ceiling((double)totalLines / maxLinesPerFile);
+            var totalLines = await GetTotalLinesAsync(filePath);
+            var estimatedFileCount = Math.Max(1, (int)Math.Ceiling((double)totalLines / Math.Max(1, maxLinesPerFile)));
 
-            var splitFileInfo = new SplitFileInfo()
+            var splitFileInfo = new SplitRequestInfo
             {
                 InputFilepath = filePath,
                 TotalLinesPerFile = totalLines,
-                SplitLinesPerFile = estimatedFileCount,
+                // The requested number of lines per output file
+                SplitLinesPerFile = maxLinesPerFile,
+                // Estimated number of output files required
                 SplitFilesAmount = estimatedFileCount
             };
 
@@ -115,117 +149,22 @@ public class TextFileSplitter
         }
         catch (Exception ex)
         {
-            return new SplitFileInfo() { Error = $"Error occurred: {ex.Message}" };
+            return new SplitRequestInfo { Error = $"Error occurred: {ex.Message}" };
         }
     }
 
-    public async Task FormatAsTranslationEntries(SplitFileOutcomeInfo splitResult)
+    /// <summary>
+    /// Formats the files produced by a split operation as translation entries.
+    /// </summary>
+    /// <param name="splitResult">The split operation result containing output file paths.</param>
+    /// <returns>A task representing the asynchronous formatting operation.</returns>
+    public async Task FormatAsTranslationEntries(SplitProcessInfo splitResult)
     {
-        foreach (string filePath in splitResult.OutputFiles)
+        foreach (var filePath in splitResult.OutputFiles)
         {
             // Create a new TranslationEntryFormatter instance for each file
             var formatter = new TranslationEntryFormatter();
             await formatter.FormatFile(filePath);
         }
-    }
-}
-
-public class SplitFileInfo
-{
-    public string InputFilepath { get; set; } = string.Empty;
-    public int TotalLinesPerFile { get; set; } = 0;
-    public int SplitLinesPerFile { get; set; } = 0;
-    public int SplitFilesAmount { get; set; } = 0;
-    public string Error { get; internal set; } = string.Empty;
-
-    public override string ToString()
-    {
-        var outcomes = new StringBuilder();
-        outcomes.Append($"Input file: {InputFilepath}" + Environment.NewLine);
-        outcomes.Append($"Total lines in file: {TotalLinesPerFile}" + Environment.NewLine);
-        outcomes.Append($"Max lines per file: {SplitLinesPerFile}" + Environment.NewLine);
-        outcomes.Append($"Estimated number of files to be created: {SplitFilesAmount}" + Environment.NewLine);
-
-        outcomes.Append($"Error: {Error}" + Environment.NewLine);
-
-        return outcomes.ToString();
-    }
-}
-
-public class SplitFileOutcomeInfo
-{
-    private readonly SplitFileInfo _splitFileInfo;
-
-    public SplitFileOutcomeInfo(SplitFileInfo splitFileInfo) => _splitFileInfo = splitFileInfo;
-
-    public string Initialize()
-    {
-        try
-        {
-            SplitFilesAmountLength = SplitFilesAmount.ToString().Length;
-            BaseFileName = Path.GetFileNameWithoutExtension(InputFilepath);
-            FileExtension = Path.GetExtension(InputFilepath) ?? string.Empty;
-            OutputDirectory = Path.GetDirectoryName(InputFilepath);
-
-            if (string.IsNullOrEmpty(OutputDirectory))
-            {
-                Warning.Add("Warning: Could not determine output directory from input file path. Using current directory for output files.");
-                OutputDirectory = Directory.GetCurrentDirectory();
-            }
-
-            if (!Directory.Exists(OutputDirectory))
-            {
-                Directory.CreateDirectory(OutputDirectory);
-            }
-
-            LineNumber = 0;
-            FileCount = 0;
-            OutputFiles = [];
-
-            return string.Empty;
-        }
-        catch (Exception e)
-        {
-            return e.Message;
-        }
-    }
-
-    public string InputFilepath { get; set; } = string.Empty;
-    public int TotalLinesPerFile { get; set; } = 0;
-    public int SplitLinesPerFile { get; set; } = 0;
-    public int SplitFilesAmount { get; set; } = 0;
-    public string Error { get; internal set; } = string.Empty;
-
-    public int LineNumber { get; internal set; } = 0;
-    public int FileCount { get; internal set; } = 0;
-    public List<string> OutputFiles { get; internal set; } = new List<string>();
-    public string? OutputDirectory { get; internal set; } = string.Empty;
-    public string FileExtension { get; internal set; }
-    public string BaseFileName { get; internal set; }
-    public List<string> Warning { get; internal set; }
-    public string OutputFileFullPath { get; internal set; }
-    public int SplitFilesAmountLength { get; internal set; }
-
-    public override string ToString()
-    {
-        var outcomes = new StringBuilder();
-        outcomes.Append($"Input file: {InputFilepath}" + Environment.NewLine);
-        outcomes.Append($"Total lines in file: {TotalLinesPerFile}" + Environment.NewLine);
-        outcomes.Append($"Max lines per file: {SplitLinesPerFile}" + Environment.NewLine);
-        outcomes.Append($"Estimated number of files to be created: {SplitFilesAmount}" + Environment.NewLine);
-
-        outcomes.Append($"Error: {Error}" + Environment.NewLine);
-
-        return outcomes.ToString();
-    }
-
-    public string GetNewFilename()
-    {
-        FileCount += 1;
-        OutputFileFullPath = Path.Combine(OutputDirectory, $"{BaseFileName}_{FileCount}{FileExtension}");
-
-        OutputFiles.Add(OutputFileFullPath);
-
-        return OutputFileFullPath;
     }
 }

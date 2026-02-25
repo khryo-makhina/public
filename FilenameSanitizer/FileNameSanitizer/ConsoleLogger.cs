@@ -1,10 +1,8 @@
-using System;
-
 namespace FilenameSanitizer;
 
 /// <summary>
-/// A simple console-based logger implementation.
-/// TODO: Consider replacing with a proper logging framework and introduce log levels.
+///     A simple console-based logger implementation.
+///     TODO: Consider replacing with a proper logging framework and introduce log levels.
 /// </summary>
 public class ConsoleLogger : ILogger
 {
@@ -19,10 +17,10 @@ public class ConsoleLogger : ILogger
     {
         Console.WriteLine($"[ERROR] {message}: {ex.Message}");
     }
-    
+
     /// <inheritdoc />
     public void LogDebug(string message)
-    {        
+    {
         Console.WriteLine($"[DEBUG] {message}");
     }
 }

@@ -1,7 +1,21 @@
 namespace TextFileSplitterApp;
 
+/// <summary>
+/// Formats text files containing translation entries.
+/// Reads an input file, transforms each line into a translation entry
+/// and writes the formatted results to a new file with the
+/// <c>_formatted.txt</c> suffix in the same directory.
+/// </summary>
 public class TranslationEntryFormatter
 {
+    /// <summary>
+    /// Reads the file at <paramref name="filePath"/>, transforms each non-empty line
+    /// into a translation entry (wrapped in an <c>&lt;entry&gt;</c> tag by default),
+    /// and writes the formatted lines to a new file named
+    /// <c>{originalName}_formatted.txt</c> in the same directory.
+    /// </summary>
+    /// <param name="filePath">The path to the input file to format.</param>
+    /// <returns>A task that represents the asynchronous formatting operation.</returns>
     public async Task FormatFile(string filePath)
     {
         // Check if the file exists
@@ -18,15 +32,14 @@ public class TranslationEntryFormatter
         try
         {
             // Read the file line by line
-            string[] lines = await File.ReadAllLinesAsync(filePath);
+            var lines = await File.ReadAllLinesAsync(filePath);
 
             // Process each line and format it
-            List<string> formattedLines = new List<string>();
-            foreach (string line in lines)
+            var formattedLines = new List<string>();
+            foreach (var line in lines)
             {
-                // Example formatting:  Let's assume each line is a translation entry
-                // and we want to wrap it in <entry> tags.  Adjust this regex as needed.
-                string formattedLine = $"<entry>{line}</entry>";
+                // Example formatting: each line is wrapped in <entry> tags.
+                var formattedLine = $"<entry>{line}</entry>";
                 formattedLines.Add(formattedLine);
             }
 
