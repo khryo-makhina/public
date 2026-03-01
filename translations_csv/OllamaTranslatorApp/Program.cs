@@ -7,88 +7,137 @@ Console.OutputEncoding = Encoding.UTF8;
 
 try
 {
-    if (args.Length == 0)
+    await RunTranslationAsync(args);
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Error: {ex.Message}");
+    Environment.Exit(1);
+}
+
+static async Task RunTranslationAsync(string[] args)
+{
+    if (ShouldShowHelp(args))
     {
         ShowHelp();
         return;
     }
 
-    if (args.Length == 1 && (args[0] == "--help" || args[0] == "-h"))
+    var translationRequests = ParseCommandLineArguments(args);
+    if (translationRequests.Count == 0)
     {
+        Console.WriteLine("Error: No valid translation requests found.");
         ShowHelp();
         return;
     }
 
-    var sourceTargetList = new Dictionary<string, string>();
+    var aiTranslator = new OllamaTranslator();
+    await ProcessTranslationRequestsAsync(aiTranslator, translationRequests);
+}
+
+static bool ShouldShowHelp(string[] args)
+{
+    return args.Length == 0 || 
+           (args.Length == 1 && (args[0] == "--help" || args[0] == "-h"));
+}
+
+static List<TranslationRequest> ParseCommandLineArguments(string[] args)
+{
+    var requests = new List<TranslationRequest>();
 
     if (args[0] == "--folder")
     {
-        var fileList = Directory.GetFiles(args[1]);
-        foreach (var file in fileList)
+        if (args.Length < 2)
         {
-            var source = file;
-            var target = string.Empty;
-
-            var dotIndex = file.IndexOf('.');
-            var extension = string.Empty;
-            if (dotIndex >= 1)
-            {
-                extension = file[dotIndex..];
-                target = file[..dotIndex];
-            }
-            else
-            {
-                extension = ".output.csv";
-                target = file + extension;
-            }
-
-            sourceTargetList.Add(source, target);
+            Console.WriteLine("Error: Folder path required after --folder option.");
+            return requests;
         }
 
-        Console.WriteLine($"Source files found: " + sourceTargetList.Count);
+        var folderPath = args[1];
+        if (!Directory.Exists(folderPath))
+        {
+            Console.WriteLine($"Error: Folder '{folderPath}' does not exist.");
+            return requests;
+        }
+
+        var csvFiles = Directory.GetFiles(folderPath, "*.csv");
+        Console.WriteLine($"Found {csvFiles.Length} CSV files in folder '{folderPath}'.");
+
+        foreach (var file in csvFiles)
+        {
+            var targetPath = GenerateTargetFilePath(file);
+            requests.Add(new TranslationRequest(file, targetPath));
+        }
     }
     else
     {
         if (args.Length != 2)
         {
             Console.WriteLine("Error: Invalid arguments. Use --help for syntax.");
-            ShowHelp();
-            return;
+            return requests;
         }
-        string sourcePath = args[0];
-        string targetPath = args[1];
 
-        Console.WriteLine($"Source file: '{sourcePath}', target file: {targetPath}");
-        sourceTargetList.Add(sourcePath, targetPath);
+        var sourcePath = args[0];
+        var targetPath = args[1];
+        requests.Add(new TranslationRequest(sourcePath, targetPath));
     }
 
-    var aiTranslator = new OllamaTranslator();
+    return requests;
+}
 
-    foreach (var sourceTarget in sourceTargetList)
+static string GenerateTargetFilePath(string sourceFilePath)
+{
+    var directory = Path.GetDirectoryName(sourceFilePath);
+    var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(sourceFilePath);
+    var targetFileName = $"{fileNameWithoutExtension}.translated.csv";
+    
+    return Path.Combine(directory ?? string.Empty, targetFileName);
+}
+
+static async Task ProcessTranslationRequestsAsync(OllamaTranslator translator, List<TranslationRequest> requests)
+{
+    foreach (var request in requests)
     {
-        var source = sourceTarget.Key;
-        var target = sourceTarget.Value;
-
-        if (String.IsNullOrEmpty(source) || String.IsNullOrEmpty(target))
+        if (!ValidateTranslationRequest(request))
         {
-            Console.WriteLine($"Error: required source '{source}' or target '{target}' missing.");
             continue;
         }
 
-        if (File.Exists(source))
+        Console.WriteLine($"Translating '{request.SourcePath}' to '{request.TargetPath}'...");
+        
+        try
         {
-            Console.WriteLine($"Error: required source '{source}' does not exist.");
-            continue;
+            await translator.ProcessCsvAsync(request.SourcePath, request.TargetPath);
+            Console.WriteLine($"Successfully translated '{request.SourcePath}'.");
         }
-
-        Console.WriteLine($"translating '{source}' ... ");
-        await aiTranslator.ProcessCsvAsync(source, source);
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error processing '{request.SourcePath}': {ex.Message}");
+        }
     }
 }
-catch (Exception ex)
+
+static bool ValidateTranslationRequest(TranslationRequest request)
 {
-    Console.WriteLine($"Error: {ex.Message}");
-    Environment.Exit(1);
+    if (string.IsNullOrWhiteSpace(request.SourcePath) || string.IsNullOrWhiteSpace(request.TargetPath))
+    {
+        Console.WriteLine($"Error: Source or target path is empty.");
+        return false;
+    }
+
+    if (!File.Exists(request.SourcePath))
+    {
+        Console.WriteLine($"Error: Source file '{request.SourcePath}' does not exist.");
+        return false;
+    }
+
+    var sourceExtension = Path.GetExtension(request.SourcePath);
+    if (!string.Equals(sourceExtension, ".csv", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.WriteLine($"Warning: Source file '{request.SourcePath}' may not be a CSV file.");
+    }
+
+    return true;
 }
 
 static void ShowHelp()
@@ -111,3 +160,5 @@ static void ShowHelp()
     Console.WriteLine("  OllamaTranslatorApp --folder my_folder");
     Console.WriteLine("  OllamaTranslatorApp input.csv output.csv");
 }
+
+record TranslationRequest(string SourcePath, string TargetPath);
