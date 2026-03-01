@@ -21,7 +21,7 @@ public class TranslationEntryFormatter
         // Check if the file exists
         if (!File.Exists(filePath))
         {
-            Console.WriteLine($"Error: File not found at path: {filePath}");
+            Console.WriteLine($"ErrorList: File not found at path: {filePath}");
             return;
         }
 

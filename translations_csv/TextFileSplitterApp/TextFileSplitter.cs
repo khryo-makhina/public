@@ -71,7 +71,7 @@ public class TextFileSplitter
                     }
                     catch (Exception e)
                     {
-                        splitProcessInfo.Error.Add(e.Message);
+                        splitProcessInfo.ErrorList.Add(e.Message);
                     }
 
                     currentOutputLineCount = 0;
@@ -130,7 +130,7 @@ public class TextFileSplitter
             if (!File.Exists(filePath))
             {
                 var errorRequestInfo = new SplitRequestInfo();
-                errorRequestInfo.Error.Add($"Error: File not found at path: {filePath}");
+                errorRequestInfo.Error.Add($"ErrorList: File not found at path: {filePath}");
                 return errorRequestInfo;
             }
 
@@ -152,7 +152,7 @@ public class TextFileSplitter
         catch (Exception ex)
         {
             var errorRequestInfo = new SplitRequestInfo();
-            errorRequestInfo.Error.Add($"Error occurred: {ex.Message}");
+            errorRequestInfo.Error.Add($"ErrorList occurred: {ex.Message}");
             return errorRequestInfo;
         }
     }

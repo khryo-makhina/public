@@ -3,13 +3,19 @@
 namespace TextFileSplitterApp;
 
 /// <summary>
-///   Represents the information and state of the split process for a given split request. This class encapsulates details about the input file, splitting parameters, output files, and any errors or warnings encountered during the splitting process.
+///   Represents the information and state of the split process for a given split request.
+///   This class encapsulates details about the input file, splitting parameters, output files,
+///   and any errors or warnings encountered during the splitting process.
 /// </summary>
-/// <param name="splitRequestInfo">The information about the split request, including input file path and splitting parameters.</param>
 public class SplitProcessInfo
 {
     private readonly SplitRequestInfo _requestInfo;
 
+    /// <summary>
+    /// The default constructor.
+    /// </summary>
+    /// <param name="splitRequestInfo">The information about the split request, including input file path and splitting parameters.</param>
+    /// <exception cref="ArgumentNullException"></exception>
     public SplitProcessInfo(SplitRequestInfo splitRequestInfo)
     {
         _requestInfo = splitRequestInfo ?? throw new ArgumentNullException(nameof(splitRequestInfo));
@@ -21,7 +27,7 @@ public class SplitProcessInfo
         SplitFilesAmount = _requestInfo.SplitFilesAmount;
 
         // Initialize mutable state
-        Error = new List<string>();
+        ErrorList = new List<string>();
         OutputFiles = new List<string>();
         Warning = new List<string>();
 
@@ -57,7 +63,7 @@ public class SplitProcessInfo
     /// <summary>
     /// Gets the list of error messages encountered during the split process.
     /// </summary>
-    public List<string> Error { get; internal set; }
+    public List<string> ErrorList { get; internal set; }
 
     /// <summary>
     /// Gets the current line number being processed in the split process.
@@ -154,9 +160,9 @@ public class SplitProcessInfo
         outcomes.Append($"Max lines per file: {SplitLinesPerFile}" + Environment.NewLine);
         outcomes.Append($"Estimated number of files to be created: {SplitFilesAmount}" + Environment.NewLine);
 
-        if (Error.Count > 0)
+        if (ErrorList.Count > 0)
         {
-            outcomes.Append($"Error: {string.Join("; ", Error)}" + Environment.NewLine);
+            outcomes.Append($"ErrorList: {string.Join("; ", ErrorList)}" + Environment.NewLine);
         }
 
         return outcomes.ToString();

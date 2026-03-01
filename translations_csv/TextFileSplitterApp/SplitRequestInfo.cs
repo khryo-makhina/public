@@ -46,7 +46,7 @@ public class SplitRequestInfo
 
         if (Error.Count > 0)
         {
-            outcomes.Append($"Error: {Error}" + Environment.NewLine);
+            outcomes.Append($"ErrorList: {Error}" + Environment.NewLine);
         }
 
         return outcomes.ToString();
