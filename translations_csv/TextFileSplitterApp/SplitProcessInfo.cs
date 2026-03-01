@@ -66,6 +66,11 @@ public class SplitProcessInfo
     public List<string> ErrorList { get; internal set; }
 
     /// <summary>
+    /// Gets a value indicating whether the split process succeeded (no errors and at least one output file).
+    /// </summary>
+    public bool Succeeded => ErrorList.Count == 0 && OutputFiles.Count > 0;
+
+    /// <summary>
     /// Gets the current line number being processed in the split process.
     /// </summary>
     public int LineNumber { get; internal set; }

@@ -21,80 +21,43 @@ public class TextFileSplitter
     {
         var splitProcessInfo = new SplitProcessInfo(splitRequestInfo);
 
-        var initError = splitProcessInfo.Initialize();
-
-        if (!string.IsNullOrEmpty(initError))
+        var initializationError = splitProcessInfo.Initialize();
+        if (!string.IsNullOrEmpty(initializationError))
         {
+            splitProcessInfo.ErrorList.Add($"Initialization failed: {initializationError}");
             return splitProcessInfo;
         }
 
-        using var reader = new StreamReader(splitProcessInfo.InputFilepath);
-
-        FileStream? outputFileStream = null;
-        StreamWriter? outputFileWriter = null;
-        var currentOutputLineCount = 0;
+        using var inputReader = new StreamReader(splitProcessInfo.InputFilepath);
 
         try
         {
-            // Read lines until EOF (ReadLineAsync returns null at EOF).
-            while (true)
-            {
-                var line = await reader.ReadLineAsync();
-                if (line is null)
-                {
-                    // EOF reached
-                    break;
-                }
-
-                // Lazily create writer for the first output file or when starting a new file
-                if (outputFileWriter is null)
-                {
-                    var newFileName = splitProcessInfo.GetNewFilename();
-                    outputFileStream = new FileStream(newFileName, FileMode.Create, FileAccess.Write, FileShare.None);
-                    outputFileWriter = new StreamWriter(outputFileStream);
-                }
-
-                await outputFileWriter.WriteLineAsync(line);
-                splitProcessInfo.LineNumber += 1;
-                currentOutputLineCount += 1;
-
-                // When we hit the configured lines per file, rotate to the next file
-                if (currentOutputLineCount >= Math.Max(splitProcessInfo.SplitLinesPerFile, MinLinesPerFile))
-                {
-                    try
-                    {
-                        await outputFileWriter.FlushAsync();
-                        outputFileWriter.Dispose();
-                        outputFileWriter = null;
-                        outputFileStream?.Dispose();
-                        outputFileStream = null;
-                    }
-                    catch (Exception e)
-                    {
-                        splitProcessInfo.ErrorList.Add(e.Message);
-                    }
-
-                    currentOutputLineCount = 0;
-                }
-            }
-
-            // Ensure the last writer is flushed and disposed
-            if (outputFileWriter is not null)
-            {
-                await outputFileWriter.FlushAsync();
-                outputFileWriter.Dispose();
-                outputFileStream?.Dispose();
-            }
+            await ProcessFileLinesAsync(inputReader, splitProcessInfo);
         }
-        finally
+        catch (Exception ex)
         {
-            outputFileWriter?.Dispose();
-            outputFileStream?.Dispose();
-
-            reader.Close();
+            splitProcessInfo.ErrorList.Add($"Unexpected error during file splitting: {ex.Message}");
         }
 
         return splitProcessInfo;
+    }
+
+    private async Task ProcessFileLinesAsync(StreamReader reader, SplitProcessInfo processInfo)
+    {
+        await using var lineProcessor = new FileLineProcessor(processInfo, MinLinesPerFile);
+        
+        while (true)
+        {
+            var line = await reader.ReadLineAsync();
+            if (line is null)
+            {
+                break; // EOF reached
+            }
+
+            await lineProcessor.ProcessLineAsync(line);
+        }
+
+        await lineProcessor.CompleteProcessingAsync();
     }
 
     /// <summary>
@@ -130,7 +93,7 @@ public class TextFileSplitter
             if (!File.Exists(filePath))
             {
                 var errorRequestInfo = new SplitRequestInfo();
-                errorRequestInfo.Error.Add($"ErrorList: File not found at path: {filePath}");
+                errorRequestInfo.ErrorMessages.Add($"ErrorList: File not found at path: {filePath}");
                 return errorRequestInfo;
             }
 
@@ -152,7 +115,7 @@ public class TextFileSplitter
         catch (Exception ex)
         {
             var errorRequestInfo = new SplitRequestInfo();
-            errorRequestInfo.Error.Add($"ErrorList occurred: {ex.Message}");
+            errorRequestInfo.ErrorMessages.Add($"ErrorList occurred: {ex.Message}");
             return errorRequestInfo;
         }
     }
@@ -169,6 +132,97 @@ public class TextFileSplitter
             // Create a new TranslationEntryFormatter instance for each file
             var formatter = new TranslationEntryFormatter();
             await formatter.FormatFile(filePath);
+        }
+    }
+
+    /// <summary>
+    /// Handles line-by-line processing and file rotation with proper resource management.
+    /// </summary>
+    private sealed class FileLineProcessor : IAsyncDisposable
+    {
+        private readonly SplitProcessInfo _processInfo;
+        private readonly int _minLinesPerFile;
+        private int _currentOutputLineCount;
+        private FileStream? _outputFileStream;
+        private StreamWriter? _outputFileWriter;
+
+        public FileLineProcessor(SplitProcessInfo processInfo, int minLinesPerFile)
+        {
+            _processInfo = processInfo ?? throw new ArgumentNullException(nameof(processInfo));
+            _minLinesPerFile = minLinesPerFile;
+        }
+
+        public async Task ProcessLineAsync(string line)
+        {
+            EnsureWriterInitialized();
+            
+            await _outputFileWriter!.WriteLineAsync(line);
+            _processInfo.LineNumber += 1;
+            _currentOutputLineCount += 1;
+
+            if (ShouldRotateFile())
+            {
+                await RotateFileAsync();
+            }
+        }
+
+        public async Task CompleteProcessingAsync()
+        {
+            if (_outputFileWriter is not null)
+            {
+                await _outputFileWriter.FlushAsync();
+                await DisposeWriterAsync();
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await DisposeWriterAsync();
+        }
+
+        private void EnsureWriterInitialized()
+        {
+            if (_outputFileWriter is null)
+            {
+                var newFileName = _processInfo.GetNewFilename();
+                _outputFileStream = new FileStream(newFileName, FileMode.Create, FileAccess.Write, FileShare.None);
+                _outputFileWriter = new StreamWriter(_outputFileStream);
+            }
+        }
+
+        private bool ShouldRotateFile()
+        {
+            var linesPerFile = Math.Max(_processInfo.SplitLinesPerFile, _minLinesPerFile);
+            return _currentOutputLineCount >= linesPerFile;
+        }
+
+        private async Task RotateFileAsync()
+        {
+            try
+            {
+                await _outputFileWriter!.FlushAsync();
+                await DisposeWriterAsync();
+                _currentOutputLineCount = 0;
+            }
+            catch (Exception ex)
+            {
+                _processInfo.ErrorList.Add($"Error rotating file: {ex.Message}");
+            }
+        }
+
+        private async Task DisposeWriterAsync()
+        {
+            if (_outputFileWriter is not null)
+            {
+                await _outputFileWriter.DisposeAsync();
+                _outputFileWriter = null;
+            }
+
+            if (_outputFileStream is not null)
+            {
+                await _outputFileStream.DisposeAsync();
+                _outputFileStream = null;
+            }
         }
     }
 }

@@ -28,9 +28,19 @@ public class SplitRequestInfo
     public int SplitFilesAmount { get; set; }
 
     /// <summary>
-    /// Gets or sets any error message encountered during the initialization of the split request. This property is used to capture and store any issues that arise while setting up the split request, such as invalid file paths, unreadable files, or other exceptions. It allows for error handling and reporting, enabling the application to provide feedback to the user or log errors for troubleshooting purposes.
+    /// Gets any error messages encountered during the initialization of the split request. This property is used to capture and store any issues that arise while setting up the split request, such as invalid file paths, unreadable files, or other exceptions. It allows for error handling and reporting, enabling the application to provide feedback to the user or log errors for troubleshooting purposes.
     /// </summary>
-    public List<string> Error { get; internal set; } = [];
+    public List<string> ErrorMessages { get; internal set; } = [];
+
+    /// <summary>
+    /// Gets a value indicating whether the split request is valid (no errors).
+    /// </summary>
+    public bool IsValid => ErrorMessages.Count == 0;
+
+    /// <summary>
+    /// Gets a formatted error string combining all error messages.
+    /// </summary>
+    public string Error => ErrorMessages.Count > 0 ? string.Join("; ", ErrorMessages) : string.Empty;
 
     /// <summary>
     /// Returns a string representation of the split request information, including details about the input file, total lines, split parameters, estimated output files, and any errors. This method is useful for logging or displaying the current state of the split request in a human-readable format, allowing developers or users to understand the parameters and any issues associated with the split request at a glance.
@@ -44,7 +54,7 @@ public class SplitRequestInfo
         outcomes.Append($"Max lines per file: {SplitLinesPerFile}" + Environment.NewLine);
         outcomes.Append($"Estimated number of files to be created: {SplitFilesAmount}" + Environment.NewLine);
 
-        if (Error.Count > 0)
+        if (ErrorMessages.Count > 0)
         {
             outcomes.Append($"ErrorList: {Error}" + Environment.NewLine);
         }
