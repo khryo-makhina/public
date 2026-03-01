@@ -37,7 +37,7 @@ static async Task RunTranslationAsync(string[] args)
 
 static bool ShouldShowHelp(string[] args)
 {
-    return args.Length == 0 || 
+    return args.Length == 0 ||
            (args.Length == 1 && (args[0] == "--help" || args[0] == "-h"));
 }
 
@@ -90,7 +90,7 @@ static string GenerateTargetFilePath(string sourceFilePath)
     var directory = Path.GetDirectoryName(sourceFilePath);
     var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(sourceFilePath);
     var targetFileName = $"{fileNameWithoutExtension}.translated.csv";
-    
+
     return Path.Combine(directory ?? string.Empty, targetFileName);
 }
 
@@ -104,7 +104,7 @@ static async Task ProcessTranslationRequestsAsync(OllamaTranslator translator, L
         }
 
         Console.WriteLine($"Translating '{request.SourcePath}' to '{request.TargetPath}'...");
-        
+
         try
         {
             await translator.ProcessCsvAsync(request.SourcePath, request.TargetPath);
@@ -121,7 +121,7 @@ static bool ValidateTranslationRequest(TranslationRequest request)
 {
     if (string.IsNullOrWhiteSpace(request.SourcePath) || string.IsNullOrWhiteSpace(request.TargetPath))
     {
-        Console.WriteLine($"Error: Source or target path is empty.");
+        Console.WriteLine("Error: Source or target path is empty.");
         return false;
     }
 
@@ -161,4 +161,4 @@ static void ShowHelp()
     Console.WriteLine("  OllamaTranslatorApp input.csv output.csv");
 }
 
-record TranslationRequest(string SourcePath, string TargetPath);
+internal record TranslationRequest(string SourcePath, string TargetPath);
