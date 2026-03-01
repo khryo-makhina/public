@@ -9,6 +9,12 @@ public class SanitizerTests
 {
     private Sanitizer SetUpSut(string replacementCharacter = "_", List<string>? excludedChars = null)
     {
+        var patternLoader = CreatePatternLoaderWithNoPatterns();
+        return SetUpSut(replacementCharacter, excludedChars, patternLoader, Substitute.For<IFileSystem>());
+    }
+
+    private IPatternLoader CreatePatternLoaderWithNoPatterns()
+    {
         var patternLoader = Substitute.For<IPatternLoader>();
         patternLoader.LoadReplacementPatterns().Returns(new List<string>());
         patternLoader.GetInvalidCharacters(Arg.Any<ISanitizerSetting>()).Returns(call =>
@@ -33,8 +39,43 @@ public class SanitizerTests
         });
         patternLoader.ApplyReplacementPatterns(Arg.Any<string>(), Arg.Any<List<string>>(), Arg.Any<string>())
             .Returns(call => call.Arg<string>()); // Return unchanged by default
-        
-        return SetUpSut(replacementCharacter, excludedChars, patternLoader, Substitute.For<IFileSystem>());
+        return patternLoader;
+    }
+
+    private IPatternLoader CreatePatternLoaderWithPatterns(List<string> patterns)
+    {
+        var patternLoader = Substitute.For<IPatternLoader>();
+        patternLoader.LoadReplacementPatterns().Returns(patterns);
+        patternLoader.GetInvalidCharacters(Arg.Any<ISanitizerSetting>()).Returns(call =>
+        {
+            var settings = call.Arg<ISanitizerSetting>();
+            var invalidChars = new List<char> { 
+                ':', '/', '\\', '<', '>', '"', '|', '?', '*', '=', '`', '\'', '¨', '~', '^', 
+                '@', '£', '€', '$', ';', '-', '&', '!', '[', ']', '{', '}', '(', ')' 
+            };
+            if (settings.ReplacementCharacter != null)
+            {
+                invalidChars.RemoveAll(c => c.ToString() == settings.ReplacementCharacter);
+            }
+            if (settings.ExcludedCharacters != null)
+            {
+                invalidChars.RemoveAll(c => settings.ExcludedCharacters.Contains(c.ToString()));
+            }
+            return invalidChars.ToArray();
+        });
+        patternLoader.ApplyReplacementPatterns(Arg.Any<string>(), Arg.Any<List<string>>(), Arg.Any<string>())
+            .Returns(call =>
+            {
+                var fileName = call.ArgAt<string>(0);
+                var pats = call.ArgAt<List<string>>(1);
+                var replacement = call.ArgAt<string>(2);
+                foreach (var p in pats)
+                {
+                    fileName = fileName.Replace(p, replacement);
+                }
+                return fileName;
+            });
+        return patternLoader;
     }
 
     private Sanitizer SetUpSut(string replacementCharacter, List<string>? excludedChars, IPatternLoader patternLoader, IFileSystem fileSystem)
@@ -266,12 +307,12 @@ public class SanitizerTests
                     invalidChars.Add('-');
                 return invalidChars.ToArray();
             });
-        
+
         var sut = SetUpSut("_", new List<string> { "-" }, patternLoader, Substitute.For<IFileSystem>());
-        
+
         // When: sanitizing a filename with dash
         var result = sut.SanitizeFileName("test-file.txt");
-        
+
         // Then: dash should be preserved
         result.ShouldBe("test-file.txt");
     }
@@ -279,8 +320,11 @@ public class SanitizerTests
     [Fact]
     public void SanitizeFileName_ComplexExampleWithDashExcluded_ShouldPreserveDash()
     {
-        // Given: sanitizer configured with space replacement and dash excluded (as per default settings)
-        var sut = SetUpSut(" ", new List<string> { "-", "#" });
+        // Given: sanitizer configured with space replacement, dash excluded, and patterns that include "bad"
+        var patterns = new List<string> { "bad" };
+        var patternLoader = CreatePatternLoaderWithPatterns(patterns);
+        var fileSystem = Substitute.For<IFileSystem>();
+        var sut = SetUpSut(" ", new List<string> { "-", "#" }, patternLoader, fileSystem);
 
         // When: sanitizing the complex filename
         var input = "GFJDSFK dfgjkdf !dfgkldfjl.@@@£$$@$$£ - baddy bad.txt";
@@ -290,43 +334,26 @@ public class SanitizerTests
         // Expected output based on actual test run
         var expected = "GFJDSFK dfgjkdf dfgkldfjl.-  dy.txt";
         actual.ShouldBe(expected);
-        
+
         // Dash should be present
         actual.ShouldContain("-");
-        
+
         // The pattern "bad" should be removed
         actual.ShouldNotContain("bad");
     }
-
-
 
     [Fact]
     public void SanitizeWithSettings_ShouldApplyPatternsFromPatternLoader()
     {
         // Given: mocked pattern loader that returns patterns
         var patterns = new List<string> { "bad", "big" };
-        var patternLoader = Substitute.For<IPatternLoader>();
-        patternLoader.LoadReplacementPatterns().Returns(patterns);
-        patternLoader.ApplyReplacementPatterns(Arg.Any<string>(), Arg.Any<List<string>>(), Arg.Any<string>())
-            .Returns(call => {
-                var fileName = call.Arg<string>();
-                var pats = call.Arg<List<string>>();
-                var replacement = call.Arg<string>();
-                foreach (var p in pats)
-                    fileName = fileName.Replace(p, replacement);
-                return fileName;
-            });
-        
-        var sanitizerSettingsLoader = Substitute.For<ISanitizerSettingsLoader>();
-        var settings = Substitute.For<ISanitizerSetting>();
-        settings.ReplacementCharacter.Returns(" ");
-        sanitizerSettingsLoader.LoadFromFile(Arg.Any<string>()).Returns(settings);
-        
-        var sut = new Sanitizer(sanitizerSettingsLoader, patternLoader, Substitute.For<IFileSystem>());
-        
+        var patternLoader = CreatePatternLoaderWithPatterns(patterns);
+        var fileSystem = Substitute.For<IFileSystem>();
+        var sut = SetUpSut(" ", new List<string>(), patternLoader, fileSystem);
+
         // When: calling SanitizeFileName which internally calls SanitizeWithSettings
-        var result = sut.SanitizeFileName("testbadbig.txt");
-        
+        _ = sut.SanitizeFileName("testbadbig.txt");
+
         // Then: pattern loader should have been called
         patternLoader.Received(1).LoadReplacementPatterns();
         patternLoader.Received(1).ApplyReplacementPatterns(Arg.Any<string>(), patterns, " ");

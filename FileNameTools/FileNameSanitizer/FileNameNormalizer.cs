@@ -25,7 +25,7 @@ public class FileNameNormalizer : IFilenameSanitizer
 
         if (sanitizer == null)
         {
-            var settingsLoader = new SanitizerSettingsLoader(_fileSystem, effectiveLogger, _folder);
+            var settingsLoader = new SanitizerSettingsLoader(_fileSystem, effectiveLogger);
             _sanitizer = new Sanitizer(settingsLoader);
         }
         else
