@@ -1,3 +1,7 @@
+using System;
+using System.Linq;
+using System.Text.Json;
+
 namespace FilenameSanitizer;
 
 /// <inheritdoc />
@@ -22,6 +26,13 @@ public class FileNameNormalizer : IFilenameSanitizer
         Logger = new OperationLogger(_folder);
         _fileSystem = fileSystem ?? new FileSystem();
         var effectiveLogger = logger ?? new ConsoleLogger();
+
+        // Set up log information about sanitizer settings and replacement patterns
+        var sanitizerSettingsInfo = GetSanitizerSettingsInfo(effectiveLogger);
+        Logger.HeaderLines.Add(sanitizerSettingsInfo);
+
+        var replacementPatternsCountInfo = GetReplacementPatternsCountInfo();
+        Logger.HeaderLines.Add(replacementPatternsCountInfo);
 
         if (sanitizer == null)
         {
@@ -226,5 +237,36 @@ public class FileNameNormalizer : IFilenameSanitizer
 
         Logger.Info.Add($"Filename after removing patterns: {filenamePatternRemoved}");
         return filenamePatternRemoved;
+    }
+
+    private string GetSanitizerSettingsInfo(ILogger logger)
+    {
+        try
+        {
+            var settingsLoader = new SanitizerSettingsLoader(_fileSystem, logger);
+            var settings = settingsLoader.LoadFromFile(SanitizerConstants.SanitizerSettingsFile);
+            var excludedChars = settings.ExcludedCharacters != null 
+                ? string.Join(", ", settings.ExcludedCharacters.Select(c => $"\"{c}\""))
+                : "none";
+            return $"sanitizer_settings.json: ReplacementCharacter = \"{settings.ReplacementCharacter}\", ExcludedCharacters = [{excludedChars}]";
+        }
+        catch (Exception)
+        {
+            return "Settings file not found or could not be parsed.";
+        }
+    }
+
+    private string GetReplacementPatternsCountInfo()
+    {
+        try
+        {
+            var patternLoader = new PatternLoader(_fileSystem);
+            var patterns = patternLoader.LoadReplacementPatterns();
+            return $"sanitizer_replace_patterns.txt: {patterns.Count} replacement pattern lines";
+        }
+        catch (Exception)
+        {
+            return "Replacement patterns file not found or could not be read.";
+        }
     }
 }

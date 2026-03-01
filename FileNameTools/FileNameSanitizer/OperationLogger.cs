@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace FilenameSanitizer;
 
 /// <summary>
@@ -13,6 +17,20 @@ public class OperationLogger
     /// </summary>
     public const string LogFileNameTemplate = "FileNameSanitizer.log.";
 
+    /// <summary>
+    /// Gets the timestamp when this logger was created.
+    /// </summary>
+    public DateTime CreationTime { get; }
+
+    /// <summary>
+    /// Gets the formatted timestamp for file names.
+    /// </summary>
+    public string Timestamp => CreationTime.ToString("yyyy.MM.dd.HH.mm.ss");
+
+    /// <summary>
+    /// Gets the list of header lines to include at the beginning of the log.
+    /// </summary>
+    public List<string> HeaderLines { get; } = new();
 
     /// <summary>
     /// Initializes a new instance of <see cref="OperationLogger"/> that will
@@ -22,9 +40,13 @@ public class OperationLogger
     public OperationLogger(string workingFolder)
     {
         WorkingFolder = workingFolder;
+        CreationTime = DateTime.Now;
 
-        var timestamp = DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss");
-        LogFilePath = Path.Combine(WorkingFolder, $"{LogFileNameTemplate}{timestamp}.txt");
+        LogFilePath = Path.Combine(WorkingFolder, $"{LogFileNameTemplate}{Timestamp}.txt");
+
+        // Add default header lines
+        HeaderLines.Add("=== FileNameSanitizer Operation Log ===");
+        HeaderLines.Add($"Timestamp: {CreationTime:yyyy-MM-dd HH:mm:ss}");
     }
 
     /// <summary>
@@ -92,12 +114,13 @@ public class OperationLogger
 
     private IEnumerable<string> FormatLogEntries()
     {
-        var entries = new List<string>
-        {
-            "=== FileNameSanitizer Operation Log ===",
-            $"Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
-            string.Empty
-        };
+        var entries = new List<string>();
+
+        // Add header lines
+        entries.AddRange(HeaderLines);
+
+        // Add empty line after headers
+        entries.Add(string.Empty);
 
         if (HasErrors)
         {
