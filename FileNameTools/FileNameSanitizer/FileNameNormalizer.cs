@@ -1,7 +1,7 @@
 namespace FilenameSanitizer;
 
 /// <inheritdoc />
-public class FilenameSanitizer : IFilenameSanitizer
+public class FileNameNormalizer : IFilenameSanitizer
 {
     private readonly IFileSystem _fileSystem;
     private readonly string _folder;
@@ -15,12 +15,12 @@ public class FilenameSanitizer : IFilenameSanitizer
     /// <param name="sanitizer"></param>
     /// <param name="fileSystem">Optional file system implementation. If not specified, uses default file system.</param>
     /// <param name="logger">Optional logger implementation. If not specified, uses console logger.</param>
-    public FilenameSanitizer(string? folder = null, ISanitizer? sanitizer = null, IFileSystem? fileSystem = null,
+    public FileNameNormalizer(string? folder = null, ISanitizer? sanitizer = null, IFileSystem? fileSystem = null,
         ILogger? logger = null)
     {
         _folder = ResolveFolderPath(folder);
         Logger = new OperationLogger(_folder);
-        _fileSystem = fileSystem ?? new DefaultFileSystem();
+        _fileSystem = fileSystem ?? new FileSystem();
         var effectiveLogger = logger ?? new ConsoleLogger();
 
         if (sanitizer == null)

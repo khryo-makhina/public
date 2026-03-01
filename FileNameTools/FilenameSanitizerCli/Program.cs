@@ -8,13 +8,13 @@ internal class Program
     {
         var (workingFolder, semiCommaSeparatedPatterns) = ParseArguments(args);
 
-        if (string.IsNullOrEmpty(workingFolder))    
+        if (string.IsNullOrEmpty(workingFolder))
         {
             ShowHelp();
             return;
         }
 
-        var filenameSanitizer = new FilenameSanitizer.FilenameSanitizer(workingFolder);
+        var filenameSanitizer = new FilenameSanitizer.FileNameNormalizer(workingFolder);
 
         try
         {

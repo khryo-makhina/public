@@ -29,7 +29,13 @@ public class SanitizerSettingsLoader : ISanitizerSettingsLoader
     public ISanitizerSetting LoadFromFile(string sanitizerSettingsFile)
     {
         var filePath = Path.Combine(_baseDirectory, sanitizerSettingsFile);
-        var settings = DeserializeSettings(filePath);
+        if (!_fileSystem.FileExists(filePath))
+        {
+            _logger.LogError($"File '{sanitizerSettingsFile}' containing settings does not exist at '{filePath}'. Returning an empty {nameof(SanitizerSetting)} instance.");
+            return SanitizerSetting.EmptyInstance; // Return default settings if file does not exist
+        }
+
+        ISanitizerSetting settings = DeserializeSettings(filePath);
         return settings;
     }
 
@@ -38,14 +44,9 @@ public class SanitizerSettingsLoader : ISanitizerSettingsLoader
     /// </summary>
     /// <param name="filePath">The path to the settings file</param>
     /// <returns>The deserialized settings or default settings if deserialization fails</returns>
-    private ISanitizerSetting DeserializeSettings(string filePath)
+    public ISanitizerSetting DeserializeSettings(string filePath)
     {
         var settings = new SanitizerSetting();
-
-        if (!_fileSystem.FileExists(filePath))
-        {
-            return settings; // Return default settings if file does not exist
-        }
 
         try
         {

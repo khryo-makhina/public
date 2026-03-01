@@ -6,6 +6,8 @@ namespace FilenameSanitizer;
 public class Sanitizer : ISanitizer
 {
     private readonly ISanitizerSettingsLoader _sanitizerSettingsLoader;
+    private readonly IPatternLoader _patternLoader;
+    private readonly IFileSystem _fileSystem;
 
     /// <summary>
     ///     Initializes a new instance of the Sanitizer class.
@@ -13,8 +15,33 @@ public class Sanitizer : ISanitizer
     /// <param name="sanitizerSettings">The settings loader to use for sanitization configuration.</param>
     /// <exception cref="ArgumentNullException">Thrown when sanitizerSettings is null.</exception>
     public Sanitizer(ISanitizerSettingsLoader sanitizerSettings)
+        : this(sanitizerSettings, new PatternLoader(new FileSystem()), new FileSystem())
+    {
+    }
+
+    /// <summary>
+    ///     Initializes a new instance of the Sanitizer class with custom dependencies.
+    /// </summary>
+    /// <param name="sanitizerSettings">The settings loader to use for sanitization configuration.</param>
+    /// <param name="patternLoader">The pattern loader to use for loading and applying patterns</param>
+    /// <exception cref="ArgumentNullException">Thrown when sanitizerSettings or patternLoader is null.</exception>
+    public Sanitizer(ISanitizerSettingsLoader sanitizerSettings, IPatternLoader patternLoader)
+        : this(sanitizerSettings, patternLoader, new FileSystem())
+    {
+    }
+
+    /// <summary>
+    ///     Initializes a new instance of the Sanitizer class with custom dependencies.
+    /// </summary>
+    /// <param name="sanitizerSettings">The settings loader to use for sanitization configuration.</param>
+    /// <param name="patternLoader">The pattern loader to use for loading and applying patterns</param>
+    /// <param name="fileSystem">The file system abstraction to use for path operations</param>
+    /// <exception cref="ArgumentNullException">Thrown when any parameter is null.</exception>
+    public Sanitizer(ISanitizerSettingsLoader sanitizerSettings, IPatternLoader patternLoader, IFileSystem fileSystem)
     {
         _sanitizerSettingsLoader = sanitizerSettings ?? throw new ArgumentNullException(nameof(sanitizerSettings));
+        _patternLoader = patternLoader ?? throw new ArgumentNullException(nameof(patternLoader));
+        _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
     }
 
     /// <inheritdoc />
@@ -131,14 +158,14 @@ public class Sanitizer : ISanitizer
     /// </summary>
     /// <param name="filename">The filename to check</param>
     /// <returns>The filename with an underscore prefix if needed</returns>
-    private static string IncludeUnderscoreForWindowsReservedNames(string filename)
+    private string IncludeUnderscoreForWindowsReservedNames(string filename)
     {
         if (Environment.OSVersion.Platform != PlatformID.Win32NT)
         {
             return filename; // Only apply this check for Windows
         }
 
-        var fileNameWithoutExt = Path.GetFileNameWithoutExtension(filename);
+        var fileNameWithoutExt = _fileSystem.GetFileNameWithoutExtension(filename);
         if (SanitizerConstants.ReservedNames.Contains(fileNameWithoutExt))
         {
             filename = "_" + filename;
@@ -153,7 +180,7 @@ public class Sanitizer : ISanitizer
     /// <remarks>File extensions are preserved, but the base filename is truncated if necessary.</remarks>
     /// <param name="filenameInput"></param>
     /// <returns>The original file name if not too long, or the cut-off filename.</returns>
-    private static string CutOffTooLong(string filenameInput)
+    private string CutOffTooLong(string filenameInput)
     {
         var filename = filenameInput;
         if (filename.Length <= SanitizerConstants.MaxPosixNameLength)
@@ -161,8 +188,8 @@ public class Sanitizer : ISanitizer
             return filename;
         }
 
-        var extension = Path.GetExtension(filename);
-        var baseFileName = Path.GetFileNameWithoutExtension(filename);
+        var extension = _fileSystem.GetExtension(filename);
+        var baseFileName = _fileSystem.GetFileNameWithoutExtension(filename);
         try
         {
             filename = baseFileName[..(SanitizerConstants.MaxPosixNameLength - extension.Length)] + extension;
@@ -185,18 +212,9 @@ public class Sanitizer : ISanitizer
     /// <param name="filename">The filename to sanitize</param>
     /// <param name="settings">The sanitizer settings to use</param>
     /// <returns>The sanitized filename</returns>
-    private static string SanitizeFilenameFromInvalidCharacters(string filename, ISanitizerSetting settings)
+    private string SanitizeFilenameFromInvalidCharacters(string filename, ISanitizerSetting settings)
     {
-        // Define the invalid characters, including POSIX unsafe chars
-        var invalidChars = Path.GetInvalidFileNameChars()
-            .Concat([
-                '!', '&', '(', ')', '{', '}', '[', ']', '<', '>', '|', '?', '=', '`', '\'', '¨', '~', '^', '*', '@',
-                '£', '€', '$', ';', '-', '\0', '/', '\\' // Additional POSIX unsafe characters
-            ])
-            .Where(c => c.ToString() != settings.ReplacementCharacter &&
-                        !settings.ExcludedCharacters
-                            .Contains(c.ToString())) // Remove the replacement character from the list
-            .ToArray();
+        var invalidChars = _patternLoader.GetInvalidCharacters(settings);
 
         // Replace invalid characters with settings.ReplacementCharacter
         filename = invalidChars.Aggregate(filename,
@@ -213,34 +231,14 @@ public class Sanitizer : ISanitizer
     /// <returns></returns>
     private string SanitizeWithSettings(string fileName)
     {
-        var replacePatternsSettingsFilename = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-            SanitizerConstants.SanitizerReplacePatternsFile);
-        if (!File.Exists(replacePatternsSettingsFilename))
+        var patterns = _patternLoader.LoadReplacementPatterns();
+        if (patterns == null || patterns.Count == 0)
         {
-            return fileName; // Return original filename if settings file does not exist
+            return fileName;
         }
 
-        // Check if the file is writable and readable
-        // Read replacement patterns from the file
-        List<string> allLines = File.ReadAllLines(replacePatternsSettingsFilename)
-            .Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#")) // Ignore empty lines and comments
-            .Select(line => line.Trim())
-            .ToList();
-
-        if (!allLines.Any())
-        {
-            return fileName; // Return original filename if no valid patterns are found
-        }
-
-        foreach (var line in allLines)
-        {
-            var toBeReplaced = line.Trim();
-            var settings = _sanitizerSettingsLoader.LoadFromFile(SanitizerConstants.SanitizerSettingsFile);
-            fileName = fileName.Replace(toBeReplaced,
-                settings.ReplacementCharacter); // Replace the pattern with the replacement character
-        }
-
-        return fileName;
+        var settings = _sanitizerSettingsLoader.LoadFromFile(SanitizerConstants.SanitizerSettingsFile);
+        return _patternLoader.ApplyReplacementPatterns(fileName, patterns, settings.ReplacementCharacter);
     }
 
     /// <summary>

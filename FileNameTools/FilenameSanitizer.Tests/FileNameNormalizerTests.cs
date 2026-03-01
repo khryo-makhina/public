@@ -5,17 +5,17 @@ using Xunit;
 namespace FilenameSanitizer.Tests;
 
 /// <summary>
-///  Unit tests for the FilenameSanitizer class, covering various scenarios for renaming
+///  Unit tests for covering various scenarios for renaming
 ///  files to meet OS requirements and removing specified patterns from filenames.
 /// </summary>
-public class FilenameSanitizerTests
+public class FileNameNormalizerTests
 {
     private const string TestFolder = @"C:\TestFolder";
     private readonly IFileSystem _fileSystem;
 
     private readonly ISanitizer _sanitizer;
 
-    public FilenameSanitizerTests()
+    public FileNameNormalizerTests()
     {
         _fileSystem = Substitute.For<IFileSystem>();
         _fileSystem.DirectoryExists(TestFolder).Returns(true);
@@ -25,7 +25,7 @@ public class FilenameSanitizerTests
 
     private IFilenameSanitizer SetUpSut()
     {
-        var sut = new FilenameSanitizer(TestFolder, _sanitizer, _fileSystem);
+        var sut = new FileNameNormalizer(TestFolder, _sanitizer, _fileSystem);
         return sut;
     }
 
@@ -98,7 +98,7 @@ _old
         // Given: a non-existent folder and the file system reports DirectoryExists=false
         var nonExistentFolder = Path.Combine(TestFolder, "NonExistent");
         _fileSystem.DirectoryExists(nonExistentFolder).Returns(false);
-        var sut = new FilenameSanitizer(nonExistentFolder, _sanitizer, _fileSystem);
+        var sut = new FileNameNormalizer(nonExistentFolder, _sanitizer, _fileSystem);
 
         // When: attempting to rename files in the non-existent folder
         sut.RenameFilesToMeetOsRequirements();
