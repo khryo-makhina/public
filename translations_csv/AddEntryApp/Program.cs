@@ -117,8 +117,8 @@ internal class Program
         Console.WriteLine("Entered Search mode. Loading existing entries...");
         try
         {
-            var valueTuple = translationFinder.GetTranslationsLines(translationFilepath);
-            var allSearchLines = valueTuple.Item2;
+            var parseResult = translationFinder.GetTranslationsLines(translationFilepath);
+            var allSearchLines = parseResult.CsvLines;
             if (allSearchLines.Length == 0)
             {
                 Console.WriteLine("Exiting Search mode due to no entries found.");

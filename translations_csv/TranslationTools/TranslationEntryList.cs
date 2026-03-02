@@ -66,4 +66,17 @@ public class TranslationEntryList
     {
         Entries.Add(entryRow);
     }
+
+    /// <summary>
+    /// Loads translation entries from CSV lines using the provided header line.
+    /// This method uses the <see cref="TranslationsParser"/> to parse the CSV data
+    /// and populate this list's voice languages and entries.
+    /// </summary>
+    /// <param name="headerLine">The header line from the CSV file</param>
+    /// <param name="csvLines">The CSV data lines (excluding the header)</param>
+    public void LoadFromCsvLines(string headerLine, string[] csvLines)
+    {
+        var parser = new TranslationsParser();
+        parser.ParseInto(this, headerLine, csvLines);
+    }
 }

@@ -30,8 +30,8 @@ public class TranslationEntryLoader
         ConsoleLogger.WriteLine(
             $"Loaded {csvLines.Length} lines from translations CSV file - one is expected to be a header line.");
 
-        var translationsParser = new TranslationsParser();
-        TranslationEntryList translationEntryList = translationsParser.ParseTranslationsCsvLines(headerLine, csvLines);
+        var translationEntryList = new TranslationEntryList();
+        translationEntryList.LoadFromCsvLines(headerLine, csvLines);
 
         ConsoleLogger.WriteLine($"Loaded {translationEntryList.Count} translation entries.");
         return translationEntryList;

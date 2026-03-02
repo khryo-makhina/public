@@ -23,10 +23,21 @@ public class TranslationsParser
     public TranslationEntryList ParseTranslationsCsvLines(string headerLineParam, string[] csvLines)
     {
         var entryList = new TranslationEntryList();
+        ParseInto(entryList, headerLineParam, csvLines);
+        return entryList;
+    }
 
+    /// <summary>
+    ///     Parses CSV lines and populates the provided TranslationEntryList.
+    /// </summary>
+    /// <param name="entryList">The entry list to populate</param>
+    /// <param name="headerLineParam">The header line</param>
+    /// <param name="csvLines">Raw CSV lines</param>
+    public void ParseInto(TranslationEntryList entryList, string headerLineParam, string[] csvLines)
+    {
         if (csvLines.Length == 0)
         {
-            return entryList;
+            return;
         }
 
         string headerLine;
@@ -44,19 +55,24 @@ public class TranslationsParser
 
         var headerColumns = GetHeaderColumns(headerLine);
 
-        string[] sourceLanguages;
-        string[] targetLanguages;
+        LanguageExtractionResult languageExtractionResult;
 
         if (headerLine.Contains(ColumnSourceLanguage, StringComparison.InvariantCultureIgnoreCase) &&
             headerLine.Contains(ColumnTargetLanguage, StringComparison.InvariantCultureIgnoreCase))
         {
-            (sourceLanguages, targetLanguages) = ExtractSourceAndTargetLanguages2(headerColumns);
+            languageExtractionResult = ExtractSourceAndTargetLanguages2(headerColumns);
         }
         else
         {
-            (sourceLanguages, targetLanguages) = ExtractSourceAndTargetLanguages(headerColumns);
+            languageExtractionResult = ExtractSourceAndTargetLanguages(headerColumns);
         }
 
+        string[] sourceLanguages = languageExtractionResult.SourceLanguages;
+        string[] targetLanguages = languageExtractionResult.TargetLanguages;
+
+        // Clear existing data
+        entryList.VoiceLanguages.Clear();
+        entryList.Entries.Clear();
 
         AddVoiceLanguages(entryList, sourceLanguages, LanguageTypes.Source);
         AddVoiceLanguages(entryList, targetLanguages, LanguageTypes.Target);
@@ -81,8 +97,6 @@ public class TranslationsParser
                 entryList.Add(entryRow);
             }
         }
-
-        return entryList;
     }
 
     /// <summary>
@@ -170,8 +184,8 @@ public class TranslationsParser
     ///     Extracts source and target language names from header columns.
     /// </summary>
     /// <param name="headerColumns">Array of header column strings</param>
-    /// <returns>A tuple containing source languages and target languages arrays</returns>
-    private (string[] sources, string[] targets) ExtractSourceAndTargetLanguages(string[] headerColumns)
+    /// <returns>A <see cref="LanguageExtractionResult"/> containing source and target languages arrays</returns>
+    private LanguageExtractionResult ExtractSourceAndTargetLanguages(string[] headerColumns)
     {
         var sources = headerColumns.Where(h => h.StartsWith(ColumnSource, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Split(':')[1]).ToArray();
@@ -179,15 +193,15 @@ public class TranslationsParser
         var targets = headerColumns.Where(h => h.StartsWith(ColumnTarget, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Split(':')[1]).ToArray();
 
-        return (sources, targets);
+        return new LanguageExtractionResult(sources, targets);
     }
 
     /// <summary>
     ///     Extracts source and target language names from header columns.
     /// </summary>
     /// <param name="headerColumns">Array of header column strings</param>
-    /// <returns>A tuple containing source languages and target languages arrays</returns>
-    private (string[] sources, string[] targets) ExtractSourceAndTargetLanguages2(string[] headerColumns)
+    /// <returns>A <see cref="LanguageExtractionResult"/> containing source and target languages arrays</returns>
+    private LanguageExtractionResult ExtractSourceAndTargetLanguages2(string[] headerColumns)
     {
         List<string> sources = [];
 
@@ -213,7 +227,7 @@ public class TranslationsParser
             }
         }
         
-        return (sources.ToArray(), targets.ToArray());
+        return new LanguageExtractionResult(sources.ToArray(), targets.ToArray());
     }
 
     /// <summary>

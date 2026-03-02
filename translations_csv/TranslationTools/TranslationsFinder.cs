@@ -98,16 +98,15 @@ public class TranslationsFinder
     /// </summary>
     /// <param name="translationFilepath"></param>
     /// <param name="startingLineNumber"></param>
-    /// <returns>A list of strings representing the lines in the CSV file</returns>
-    public (string, string[]) GetTranslationsLines(string translationFilepath, int startingLineNumber = -1)
+    /// <returns>A <see cref="CsvParseResult"/> containing the header line and CSV data lines.</returns>
+    public CsvParseResult GetTranslationsLines(string translationFilepath, int startingLineNumber = -1)
     {
         if (!File.Exists(translationFilepath))
         {
-            return new ValueTuple<string, string[]>();
+            return new CsvParseResult(string.Empty, Array.Empty<string>());
         }
 
-        var valueTuple = ReadTranslationsLines(translationFilepath, startingLineNumber);
-        return valueTuple;
+        return ReadTranslationsLines(translationFilepath, startingLineNumber);
     }
 
     /// <summary>
@@ -247,7 +246,7 @@ public class TranslationsFinder
     /// <summary>
     ///     Reads the lines from the translation CSV, honoring an optional starting line number.
     /// </summary>
-    private (string, string[]) ReadTranslationsLines(string translationFilepath, int startingLineNumber)
+    private CsvParseResult ReadTranslationsLines(string translationFilepath, int startingLineNumber)
     {
         string headerLine;
         string[] allLines;
@@ -262,7 +261,7 @@ public class TranslationsFinder
                 headerLine = allLines[0];
                 array = allLines.Skip(startingLineNumber);
 
-                return new ValueTuple<string, string[]>(headerLine, [.. array]);// to array
+                return new CsvParseResult(headerLine, [.. array]);// to array
             }
 
             ConsoleLogger.WriteLine(
@@ -275,9 +274,9 @@ public class TranslationsFinder
         {
             headerLine = allLines[0];
             array = allLines.Skip(1);
-            return new ValueTuple<string, string[]>(headerLine, [.. array]); // to array
+            return new CsvParseResult(headerLine, [.. array]); // to array
         }
 
-        return new ValueTuple<string, string[]>(string.Empty, []); // to array
+        return new CsvParseResult(string.Empty, []); // to array
     }
 }
