@@ -172,7 +172,7 @@ internal class Program
         var entriesCountChars = entriesLoadedAmount.ToString().Length;
 
         // Speak random entries in either source language (e.g. English) and in target language (e.g. Finnish)
-        var randomizer = new Random(entriesLoadedAmount);
+        var randomizer = new Random();
         for (var i = 0; i < entriesLoadedAmount; i++)
         {
             // Check if a key has been pressed
@@ -181,7 +181,7 @@ internal class Program
                 break;
             }
 
-            var randomIndex = randomizer.Next(0, entriesLoadedAmount - 1);
+            var randomIndex = randomizer.Next(0, entriesLoadedAmount);
             TextEntryRow entryRow = entryList[randomIndex];
             var padding = (i + 1).ToString().PadLeft(entriesCountChars, '0');
 
