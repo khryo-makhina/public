@@ -99,13 +99,15 @@ public class TranslationsFinder
     /// <param name="translationFilepath"></param>
     /// <param name="startingLineNumber"></param>
     /// <returns>A list of strings representing the lines in the CSV file</returns>
-    public string[] GetTranslationsLines(string translationFilepath, int startingLineNumber = -1)
+    public (string, string[]) GetTranslationsLines(string translationFilepath, int startingLineNumber = -1)
     {
         if (!File.Exists(translationFilepath))
         {
-            return [];
+            return new ValueTuple<string, string[]>();
         }
-        return ReadTranslationsLines(translationFilepath, startingLineNumber);
+
+        var valueTuple = ReadTranslationsLines(translationFilepath, startingLineNumber);
+        return valueTuple;
     }
 
     /// <summary>
@@ -245,17 +247,22 @@ public class TranslationsFinder
     /// <summary>
     ///     Reads the lines from the translation CSV, honoring an optional starting line number.
     /// </summary>
-    private string[] ReadTranslationsLines(string translationFilepath, int startingLineNumber)
+    private (string, string[]) ReadTranslationsLines(string translationFilepath, int startingLineNumber)
     {
+        string headerLine;
+        string[] allLines;
+        IEnumerable<string> array;
         if (startingLineNumber > 0)
         {
             ConsoleLogger.WriteLine($"Starting line number {startingLineNumber} requested.");
-            var allLines = File.ReadAllLines(translationFilepath);
+            allLines = File.ReadAllLines(translationFilepath);
             if (startingLineNumber < allLines.Length)
             {
                 ConsoleLogger.WriteLine($"Reading {startingLineNumber}/{allLines.Length}");
-                var array = allLines.Skip(startingLineNumber);
-                return [.. array]; // to array
+                headerLine = allLines[0];
+                array = allLines.Skip(startingLineNumber);
+
+                return new ValueTuple<string, string[]>(headerLine, [.. array]);// to array
             }
 
             ConsoleLogger.WriteLine(
@@ -263,7 +270,14 @@ public class TranslationsFinder
         }
 
         ConsoleLogger.WriteLine("Loading all entries.");
-        var full = File.ReadAllLines(translationFilepath);
-        return [.. full]; // to array
+        allLines = File.ReadAllLines(translationFilepath);
+        if (allLines.Length > 0)
+        {
+            headerLine = allLines[0];
+            array = allLines.Skip(1);
+            return new ValueTuple<string, string[]>(headerLine, [.. array]); // to array
+        }
+
+        return new ValueTuple<string, string[]>(string.Empty, []); // to array
     }
 }

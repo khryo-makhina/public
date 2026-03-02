@@ -31,7 +31,7 @@ internal class Program
 
         var splitter = new TextFileSplitter();
         var splitRequest = await GetSplitRequestAsync(splitter, applicationArguments);
-        
+
         if (!splitRequest.IsValid)
         {
             Console.WriteLine($"File splitting cannot proceed due to error: {splitRequest.Error}");
@@ -47,7 +47,7 @@ internal class Program
         }
 
         var splitResult = await ExecuteSplitAsync(splitter, splitRequest);
-        
+
         if (applicationArguments.FormatAsCsv && splitResult.Succeeded)
         {
             await FormatSplitFilesAsCsvAsync(splitter, splitResult);
@@ -63,10 +63,10 @@ internal class Program
     {
         Console.WriteLine("Proceeding with file splitting...");
         var splitResult = await splitter.SplitFileAsync(splitRequest);
-        
+
         Console.WriteLine("File splitting complete.");
         Console.WriteLine($"Details: {splitResult}");
-        
+
         return splitResult;
     }
 
@@ -117,7 +117,7 @@ public record ApplicationArguments
         }
 
         var inputFilePath = args[0];
-        
+
         if (!int.TryParse(args[1], out var maxLinesPerFile))
         {
             return new ApplicationArguments

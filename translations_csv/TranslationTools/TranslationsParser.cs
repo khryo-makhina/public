@@ -7,12 +7,20 @@ namespace TranslationTools;
 /// </summary>
 public class TranslationsParser
 {
+    public const string ColumnSourceLanguage = "Source Language";
+    public const string ColumnTargetLanguage = "Target Language";
+    public const string ColumnSourceText = "Source Text";
+    public const string ColumnTargetText = "Target Text";
+    public const string ColumnSource = "Source";
+    public const string ColumnTarget = "Target";
+
     /// <summary>
     ///     Parses CSV lines into a list of TranslationEntry objects.
     /// </summary>
+    /// <param name="headerLineParam">The header line</param>
     /// <param name="csvLines">Raw CSV lines</param>
     /// <returns>A list of TranslationEntry objects</returns>
-    public TranslationEntryList ParseTranslationsCsvLines(string[] csvLines)
+    public TranslationEntryList ParseTranslationsCsvLines(string headerLineParam, string[] csvLines)
     {
         var entryList = new TranslationEntryList();
 
@@ -21,23 +29,57 @@ public class TranslationsParser
             return entryList;
         }
 
-        var headerLine = GetCleanHeaderLine(csvLines[0]);
+        string headerLine;
+
+#pragma warning disable IDE0045
+        if (headerLineParam.Contains(':'))
+#pragma warning restore IDE0045
+        {
+            headerLine = GetCleanHeaderLine(headerLineParam);
+        }
+        else
+        {
+            headerLine = GetCleanHeaderLineFromLanguageColumns(headerLineParam, csvLines);
+        }
+
         var headerColumns = GetHeaderColumns(headerLine);
 
-        var (sourceLanguages, targetLanguages) = ExtractSourceAndTargetLanguages(headerColumns);
+        string[] sourceLanguages;
+        string[] targetLanguages;
+
+        if (headerLine.Contains(ColumnSourceLanguage, StringComparison.InvariantCultureIgnoreCase) &&
+            headerLine.Contains(ColumnTargetLanguage, StringComparison.InvariantCultureIgnoreCase))
+        {
+            (sourceLanguages, targetLanguages) = ExtractSourceAndTargetLanguages2(headerColumns);
+        }
+        else
+        {
+            (sourceLanguages, targetLanguages) = ExtractSourceAndTargetLanguages(headerColumns);
+        }
+
 
         AddVoiceLanguages(entryList, sourceLanguages, LanguageTypes.Source);
         AddVoiceLanguages(entryList, targetLanguages, LanguageTypes.Target);
 
-        entryList.IsTranslationEntryTranslations = csvLines.Length > 2
-                                                   && headerLine.Contains("Source Language,") &&
-                                                   headerLine.Contains("Target Language,");
+        entryList.IsTranslationEntryTranslations = headerLine.Split(',').Length > 2
+                                                   && headerLine.Contains(ColumnSourceLanguage, StringComparison.InvariantCultureIgnoreCase) &&
+                                                   headerLine.Contains(ColumnTargetLanguage, StringComparison.InvariantCultureIgnoreCase);
 
-
-        foreach (var line in csvLines)
+        if (entryList.IsTranslationEntryTranslations)
         {
-            var entryRow = CreateEntryRowFromLine(line, entryList.VoiceLanguages);
-            entryList.Add(entryRow);
+            foreach (var line in csvLines)
+            {
+                var entryRow = CreateTranslationEntryRowFromLine(headerColumns, line, entryList.VoiceLanguages);
+                entryList.Add(entryRow);
+            }
+        }
+        else
+        {
+            foreach (var line in csvLines)
+            {
+                var entryRow = CreateEntryRowFromLine(line, entryList.VoiceLanguages);
+                entryList.Add(entryRow);
+            }
         }
 
         return entryList;
@@ -66,7 +108,51 @@ public class TranslationsParser
     /// <returns>The cleaned header line</returns>
     private string GetCleanHeaderLine(string rawHeader)
     {
-        return rawHeader.Replace("\"", "").Replace("[", "").Replace("]", "").Replace(" ", "").Trim();
+        var cleanedHeaderLine
+            = rawHeader.Replace("\"", "").Replace("[", "").Replace("]", "").Replace(" ", "").Trim();
+        return cleanedHeaderLine;
+    }
+
+    private string GetCleanHeaderLineFromLanguageColumns(string headerLine, string[] csvLines)
+    {
+        var sourcePattern = ColumnSource;
+        if (headerLine.Contains(ColumnSourceLanguage, StringComparison.InvariantCultureIgnoreCase)) // if translations.csv
+        {
+            sourcePattern = ColumnSourceLanguage;
+        }
+
+        var targetPattern = ColumnTarget;
+        if (headerLine.Contains(ColumnTargetLanguage, StringComparison.InvariantCultureIgnoreCase)) // if translations.csv
+        {
+            targetPattern = ColumnTargetLanguage;
+        }
+
+        var columns = new List<string>();
+        var headerLineArray = headerLine.Replace("[", string.Empty).Replace("]", string.Empty).Trim().Split(',');
+        for (var index = 0; index < headerLineArray.Length; index++)
+        {
+            var column = headerLineArray[index];
+            var columnValue = column.Trim();
+            if (columnValue.StartsWith(sourcePattern))
+            {
+                var sourceLanguage = csvLines[index].Split(',')[index].Trim('"');
+                var sourceWithLanguage = columnValue + ":" + sourceLanguage;
+                columns.Add(sourceWithLanguage);
+                continue;
+            }
+
+            if (columnValue.StartsWith(targetPattern))
+            {
+                var targetLanguage = csvLines[index].Split(',')[index].Trim('"');
+                var targetWithLanguage = columnValue + ":" + targetLanguage;
+                columns.Add(targetWithLanguage);
+                continue;
+            }
+
+            columns.Add(columnValue);
+        }
+        var languageHeaderLines = string.Join(",", columns);
+        return languageHeaderLines;
     }
 
     /// <summary>
@@ -76,7 +162,8 @@ public class TranslationsParser
     /// <returns>An array of header column strings</returns>
     private string[] GetHeaderColumns(string cleanHeader)
     {
-        return cleanHeader.Split(',').Select(h => h.Trim()).ToArray();
+        var headerColumns = cleanHeader.Split(',').Select(h => h.Trim()).ToArray();
+        return headerColumns;
     }
 
     /// <summary>
@@ -86,12 +173,47 @@ public class TranslationsParser
     /// <returns>A tuple containing source languages and target languages arrays</returns>
     private (string[] sources, string[] targets) ExtractSourceAndTargetLanguages(string[] headerColumns)
     {
-        var sources = headerColumns.Where(h => h.StartsWith("Source", StringComparison.OrdinalIgnoreCase))
+        var sources = headerColumns.Where(h => h.StartsWith(ColumnSource, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Split(':')[1]).ToArray();
-        var targets = headerColumns.Where(h => h.StartsWith("Target", StringComparison.OrdinalIgnoreCase))
+
+        var targets = headerColumns.Where(h => h.StartsWith(ColumnTarget, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Split(':')[1]).ToArray();
 
         return (sources, targets);
+    }
+
+    /// <summary>
+    ///     Extracts source and target language names from header columns.
+    /// </summary>
+    /// <param name="headerColumns">Array of header column strings</param>
+    /// <returns>A tuple containing source languages and target languages arrays</returns>
+    private (string[] sources, string[] targets) ExtractSourceAndTargetLanguages2(string[] headerColumns)
+    {
+        List<string> sources = [];
+
+        List<string> targets = [];
+
+        foreach (var headerColumn in headerColumns)
+        {
+            var split = headerColumn.Split(':');
+            if (split.Length <= 1)
+            {
+                continue;
+            }
+
+            if (headerColumn.Contains(ColumnSourceLanguage, StringComparison.InvariantCultureIgnoreCase))
+            {
+                sources.Add(split[1]);
+                continue;
+            }
+
+            if (headerColumn.Contains(ColumnTargetLanguage, StringComparison.InvariantCultureIgnoreCase))
+            {
+                targets.Add(split[1]);
+            }
+        }
+        
+        return (sources.ToArray(), targets.ToArray());
     }
 
     /// <summary>
@@ -133,6 +255,47 @@ public class TranslationsParser
 
         return entryRow;
     }
+
+    private TextEntryRow CreateTranslationEntryRowFromLine(string[] headerColumns, string line,
+        VoiceLanguageList voiceLanguages)
+    {
+        var entryRow = new TextEntryRow();
+        var columns = SplitCsvLine(line).ToArray();
+        for (var i = 0; i < columns.Length; i++)
+        {
+            var isSource = headerColumns[i].StartsWith(ColumnSourceText, StringComparison.InvariantCultureIgnoreCase);
+            var isTarget = headerColumns[i].StartsWith(ColumnTargetText, StringComparison.InvariantCultureIgnoreCase);
+            if (!isSource && !isTarget)
+            {
+                continue;
+            }
+
+            string languageName;
+            if (isSource)
+            {
+                languageName = headerColumns
+                    .First(x => x.StartsWith(ColumnSourceLanguage, StringComparison.InvariantCultureIgnoreCase))
+                    .Split(':')[1];
+            }
+            else
+            {
+                languageName = headerColumns
+                    .First(x => x.StartsWith(ColumnTargetLanguage, StringComparison.InvariantCultureIgnoreCase))
+                    .Split(':')[1];
+            }
+            var column = columns[i];
+            var entry = new TextEntry
+            {
+                Language = voiceLanguages.FirstOrDefault(x=>x.LanguageName == languageName) ?? VoiceLanguage.System,
+                Text = column.Trim('"').Trim()
+            };
+
+            entryRow.Add(entry);
+        }
+
+        return entryRow;
+    }
+
 
     /// <summary>
     ///     Splits a CSV line into individual fields, handling quoted fields and escaped quotes.

@@ -19,9 +19,8 @@ public class TranslationEntryLoader
         var translationFinder = new TranslationsFinder();
         var translationFilepath = translationFinder.FindTranslationsCsvFilepath(csvFilePath);
 
-        var translationLines = translationFinder.GetTranslationsLines(translationFilepath, startingLineNumber);
-
-        if (translationLines.Length == 0)
+        var (headerLine, csvLines) = translationFinder.GetTranslationsLines(translationFilepath, startingLineNumber);
+        if (csvLines.Length == 0)
         {
             ConsoleLogger.WriteLine("No " + nameof(TextEntry) + " lines found in the CSV file.");
 
@@ -29,10 +28,10 @@ public class TranslationEntryLoader
         }
 
         ConsoleLogger.WriteLine(
-            $"Loaded {translationLines.Length} lines from translations CSV file - one is expected to be a header line.");
+            $"Loaded {csvLines.Length} lines from translations CSV file - one is expected to be a header line.");
 
         var translationsParser = new TranslationsParser();
-        TranslationEntryList translationEntryList = translationsParser.ParseTranslationsCsvLines(translationLines);
+        TranslationEntryList translationEntryList = translationsParser.ParseTranslationsCsvLines(headerLine, csvLines);
 
         ConsoleLogger.WriteLine($"Loaded {translationEntryList.Count} translation entries.");
         return translationEntryList;

@@ -1,9 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Text;
 using TextToSpeechApp;
 using TranslationTools;
 
@@ -142,6 +137,13 @@ internal class Program
             Thread.Sleep(10000);
         }
 
+        if (key.Key == ConsoleKey.Spacebar)
+        {
+            Console.WriteLine("Space bar pressed. Paused.");
+            Console.WriteLine("Press space bar again to continue.");
+            Console.ReadKey(true);
+        }
+
         return false;
     }
 
@@ -154,9 +156,10 @@ internal class Program
     /// <returns>A task that represents the asynchronous reciting operation.</returns>
     private static async Task RunRecitingLoop(TranslationEntryList entryList)
     {
-        Console.WriteLine("Starting text-to-speech for translation entries. Press Ctrl+C to stop.");
+        const string message = "Starting text-to-speech for translation entries. Press Ctrl+C or ESC to stop.";
+        Console.WriteLine(message);
 
-        var textExitPrompt = "Press Escape to stop or Enter to pause for 10 seconds.";
+        const string textExitPrompt = "Press Enter to pause for 10 seconds. Press space bar to pause and again to resume.";
         Console.WriteLine(textExitPrompt);
 
         using var textToSpeechService = new TextToSpeechService(entryList.VoiceLanguages, entryList.Entries);
