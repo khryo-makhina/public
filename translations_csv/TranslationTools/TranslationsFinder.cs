@@ -1,4 +1,6 @@
-﻿namespace TranslationTools;
+﻿using System.Reflection;
+
+namespace TranslationTools;
 
 /// <summary>
 ///     Provides methods to find and read translation CSV files.
@@ -33,6 +35,9 @@ public class TranslationsFinder
         {
             if (!File.Exists(translationFilepath))
             {
+                var currentDir = Directory.GetCurrentDirectory();
+                ConsoleLogger.WriteLine($"Current directory '{currentDir}'.");
+
                 ConsoleLogger.WriteLine(
                     $"Warning: The translation file path from settings does not exist: {translationFilepath}");
             }
@@ -58,6 +63,12 @@ public class TranslationsFinder
 
         if (TryFallbackPath(out foundPath))
         {
+            return foundPath;
+        }
+
+        if (TryEntryAssemblyPath(out foundPath))
+        {
+            ConsoleLogger.WriteLine($"Using file path resolved from entry assembly, at: {foundPath}");
             return foundPath;
         }
 
@@ -102,6 +113,8 @@ public class TranslationsFinder
     /// </summary>
     private bool TryFindInWorkingDirectory(out string path)
     {
+        ConsoleLogger.WriteLine($"{nameof(TryFindInWorkingDirectory)} ...");
+
         path = string.Empty;
         if (!File.Exists(TranslationCsvFilename))
         {
@@ -118,6 +131,8 @@ public class TranslationsFinder
     /// </summary>
     private bool TryFindInParentDirectories(out string path)
     {
+        ConsoleLogger.WriteLine($"{nameof(TryFindInParentDirectories)} ...");
+
         path = string.Empty;
         ConsoleLogger.WriteLine($"Searching for of folder of file {TranslationCsvFilename} ...");
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -152,7 +167,37 @@ public class TranslationsFinder
     /// </summary>
     private bool TryFallbackPath(out string path)
     {
-        path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", TranslationCsvFilename));
+        ConsoleLogger.WriteLine($"{nameof(TryFallbackPath)} ...");
+
+        var currentDir = Directory.GetCurrentDirectory();
+        path = Path.GetFullPath(Path.Combine(currentDir, "..", TranslationCsvFilename));
+
+        ConsoleLogger.WriteLine($@"Current directory {currentDir}\..\{TranslationCsvFilename} ...");
+
+        if (!File.Exists(path))
+        {
+            ConsoleLogger.WriteLine($"Warning: The fallback translation file path does not exist: {path}");
+            path = string.Empty;
+            return false;
+        }
+
+        ConsoleLogger.WriteLine($"Using fallback {TranslationCsvFilename} file at: {path}");
+        return true;
+    }
+
+    private bool TryEntryAssemblyPath(out string path)
+    {
+        ConsoleLogger.WriteLine($"{nameof(TryEntryAssemblyPath)} ...");
+        var entryAssembly = Assembly.GetEntryAssembly();
+        var assemblyName = entryAssembly!.GetName();
+
+        const string solutionName = "translations_csv";
+        var index = entryAssembly.Location.IndexOf(solutionName, StringComparison.Ordinal);
+        var solutionPath = entryAssembly.Location[..(index + solutionName.Length)];
+        path = Path.GetFullPath(Path.Combine(solutionPath, TranslationCsvFilename));
+
+        ConsoleLogger.WriteLine($@"Solution path {assemblyName}\{TranslationCsvFilename} ...");
+
         if (!File.Exists(path))
         {
             ConsoleLogger.WriteLine($"Warning: The fallback translation file path does not exist: {path}");
