@@ -2,6 +2,7 @@ using Windows.Media.Core;
 using Windows.Media.Playback;
 using Windows.Media.SpeechSynthesis;
 using TranslationTools;
+using System.Globalization;
 
 namespace TextToSpeechApp;
 
@@ -12,7 +13,7 @@ namespace TextToSpeechApp;
 ///     Provides text-to-speech services for multiple languages and manages
 ///     associated synthesizers and media players.
 /// </summary>
-internal class TextToSpeechService : IDisposable
+internal class TextToSpeechService : IDisposable, ITextToSpeechService
 {
     private readonly List<TextEntryRow> _rowEntries;
 
@@ -25,7 +26,11 @@ internal class TextToSpeechService : IDisposable
     {
         VoiceLanguages = voiceLanguages;
 
-        Initialize(voiceLanguages);
+        var outputs = Initialize(voiceLanguages);
+        foreach (var output in outputs)
+        {
+            Console.WriteLine(output);
+        }
 
         _rowEntries ??= [];
     }
@@ -41,30 +46,24 @@ internal class TextToSpeechService : IDisposable
         _rowEntries = rowEntries;
     }
 
-    /// <summary>
-    ///     The configured voice languages and defaults used by this service.
-    /// </summary>
+    /// <inheritdoc/>>
     public VoiceLanguageList VoiceLanguages { get; }
 
-    /// <summary>
-    ///     Mapping of language name to its <see cref="SpeechSynthesizer"/> instance.
-    /// </summary>
-    public Dictionary<string, SpeechSynthesizer> Synths { get; } = new();
+    /// <inheritdoc/>
+    public Dictionary<string, SpeechSynthesizer> SpeechSynthesizers { get; } = new();
 
-    /// <summary>
-    ///     Mapping of language name to its <see cref="MediaPlayer"/> instance.
-    /// </summary>
-    public Dictionary<string, MediaPlayer> Players { get; } = new();
+    /// <inheritdoc/>
+    public Dictionary<string, MediaPlayer> MediaPlayers { get; } = new();
 
-    /// <inheritdoc />
+    /// <inheritdoc cref="IDisposable.Dispose" />
     public void Dispose()
     {
-        foreach (KeyValuePair<string, SpeechSynthesizer> entry in Synths)
+        foreach (KeyValuePair<string, SpeechSynthesizer> entry in SpeechSynthesizers)
         {
             entry.Value.Dispose();
         }
 
-        foreach (KeyValuePair<string, MediaPlayer> entry in Players)
+        foreach (KeyValuePair<string, MediaPlayer> entry in MediaPlayers)
         {
             entry.Value.Dispose();
         }
@@ -73,21 +72,33 @@ internal class TextToSpeechService : IDisposable
     }
 
 
-    /// <summary>
-    ///     Initializes synthesizers and players for each language in the provided list.
-    /// </summary>
-    /// <param name="languageList">The list of languages to initialize.</param>
-    public void Initialize(VoiceLanguageList languageList)
+    /// <inheritdoc/>
+    public List<string> Initialize(VoiceLanguageList languageList)
     {
-        foreach (VoiceLanguage language in languageList)
+        var output = new List<string>();
+        List<InstalledVoice> installedVoices = ListInstalledVoices();
+
+        output.Add("Available voices:");
+
+        foreach (InstalledVoice voice in installedVoices)
         {
-            InitializeVoiceLanguage(language);
+            output.Add($"- {voice.DisplayName} ({voice.TwoLetterIsoLanguageName})");
         }
 
-        if (Synths.Count == 0 || Players.Count == 0)
+        foreach (VoiceLanguage language in languageList)
         {
-            InitializeVoiceLanguage(VoiceLanguage.System);
+            List<string> outputs = InitializeVoiceLanguage(language);
+            output.AddRange(outputs);
         }
+
+        // ReSharper disable once InvertIf
+        if (SpeechSynthesizers.Count == 0 || MediaPlayers.Count == 0)
+        {
+            List<string> outputs = InitializeVoiceLanguage(VoiceLanguage.System);
+            output.AddRange(outputs);
+        }
+
+        return output;
     }
 
     /// <summary>
@@ -97,22 +108,18 @@ internal class TextToSpeechService : IDisposable
     /// <summary>
     ///     Creates and configures the speech synthesizer and media player for a single language.
     /// </summary>
-    /// <param name="language">The language to initialize.</param>
-    private void InitializeVoiceLanguage(VoiceLanguage language)
+    private List<string> InitializeVoiceLanguage(VoiceLanguage language)
     {
+        var output = new List<string>();
         var synth = new SpeechSynthesizer();
-        Synths[language.LanguageName] = synth;
-        var player = new MediaPlayer();
+        SpeechSynthesizers[language.LanguageName] = synth;
 
-        Players[language.LanguageName] = player;
+        var player = new MediaPlayer();
+        MediaPlayers[language.LanguageName] = player;
 
         VoiceInformation? defaultVoice = SpeechSynthesizer.DefaultVoice;
 
-        // Select voice by language tag (e.g., "en-US", "fi-FI")
-        var twoLetterIsoLanguageName = language.LanguageCulture.TwoLetterISOLanguageName;
-        VoiceInformation? voice = SpeechSynthesizer.AllVoices
-            .FirstOrDefault(v =>
-                v.Language[..2].Equals(twoLetterIsoLanguageName, StringComparison.OrdinalIgnoreCase));
+        VoiceInformation? voice = GetVoiceInformation(language.LanguageCulture);
 
         if (voice != null)
         {
@@ -121,30 +128,68 @@ internal class TextToSpeechService : IDisposable
                 voice = defaultVoice;
             }
 
-            Console.WriteLine(
-                $"Using voice: {voice.DisplayName} for language: {language.LanguageName[..2]}");
             synth.Voice = voice;
+
+            output.Add($"Using voice: {voice.DisplayName} for language: {language.LanguageName[..2]}");
         }
         else
         {
-            Console.WriteLine("Available voices:");
-            foreach (VoiceInformation? v in SpeechSynthesizer.AllVoices)
+            output.Add($"No voice found for language: {language.LanguageName[..2]}. Using default voice.");
+        }
+
+        return output;
+    }
+
+    /// <inheritdoc/>
+    public List<InstalledVoice> ListInstalledVoices()
+    {
+        var installedVoices = new List<InstalledVoice>();
+        foreach (VoiceInformation? v in SpeechSynthesizer.AllVoices)
+        {
+            var displayName = v.DisplayName;
+            var twoLetterIsoLanguageName = v.Language[..2];
+
+            installedVoices.Add(new InstalledVoice(displayName, twoLetterIsoLanguageName));
+        }
+
+        return installedVoices;
+    }
+
+    /// <inheritdoc/>
+    public VoiceInformation? GetVoiceInformation(CultureInfo languageCulture)
+    {
+        // Select voice by language tag (e.g., "en-US", "fi-FI")
+        var twoLetterIsoLanguageName = languageCulture.TwoLetterISOLanguageName;
+        IReadOnlyList<VoiceInformation> allVoices = SpeechSynthesizer.AllVoices;
+        VoiceInformation? voice = null;
+
+        foreach (VoiceInformation? v in allVoices)
+        {
+            if (!GenericLanguageMatch(v.Language, twoLetterIsoLanguageName))
             {
-                Console.WriteLine($"- {v.DisplayName} ({v.Language[..2]})");
+                continue;
             }
 
-            Console.WriteLine(
-                $"No voice found for language: {language.LanguageName[..2]}. Using default voice.");
+            voice = v;
+            break;
         }
+
+        return voice;
     }
 
     /// <summary>
-    ///     Synthesizes and plays the supplied <paramref name="text"/> asynchronously
-    ///     using the specified <paramref name="voiceLanguage"/>, or the default voice.
+    /// Get generic language.
     /// </summary>
-    /// <param name="text">The text to speak.</param>
-    /// <param name="voiceLanguage">Optional language override to use for this utterance.</param>
-    /// <returns>A task that completes when playback finishes.</returns>
+    /// <param name="language">Example: en-GB</param>
+    /// <param name="twoLetterIsoLanguageName">Example: en</param>
+    /// <returns></returns>
+    private static bool GenericLanguageMatch(string language, string twoLetterIsoLanguageName)
+    {
+        var isMatch = language.StartsWith(twoLetterIsoLanguageName, StringComparison.OrdinalIgnoreCase);
+        return isMatch;
+    }
+
+    /// <inheritdoc/>
     public async Task SpeakTextAsync(string text, VoiceLanguage? voiceLanguage = null)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -154,13 +199,13 @@ internal class TextToSpeechService : IDisposable
 
         VoiceLanguage useVoice = voiceLanguage ?? VoiceLanguages.DefaultVoice;
 
-        SpeechSynthesisStream? stream = await Synths[useVoice.LanguageName].SynthesizeTextToStreamAsync(text);
-        Players[useVoice.LanguageName].Source = MediaSource.CreateFromStream(stream, stream.ContentType);
+        SpeechSynthesisStream? stream = await SpeechSynthesizers[useVoice.LanguageName].SynthesizeTextToStreamAsync(text);
+        MediaPlayers[useVoice.LanguageName].Source = MediaSource.CreateFromStream(stream, stream.ContentType);
 
         // Use TaskCompletionSource to await media end.
         var tsc = new TaskCompletionSource<bool>();
-        Players[useVoice.LanguageName].MediaEnded += (_, _) => { tsc.TrySetResult(true); };
-        Players[useVoice.LanguageName].Play();
+        MediaPlayers[useVoice.LanguageName].MediaEnded += (_, _) => { tsc.TrySetResult(true); };
+        MediaPlayers[useVoice.LanguageName].Play();
 
         // Wait for a speech synthesis to complete.
         await tsc.Task;
@@ -177,4 +222,10 @@ internal class TextToSpeechService : IDisposable
 
         await SpeakTextAsync(text, entry.Language);
     }
+}
+
+public class InstalledVoice(string displayName, string twoLetterIsoLanguageName)
+{
+    public string DisplayName { get; set; } = displayName;
+    public string TwoLetterIsoLanguageName { get; set; } = twoLetterIsoLanguageName;
 }
