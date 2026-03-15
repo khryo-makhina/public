@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace TranslationTools.OllamaApi;
+namespace OllamaTranslatorApi;
 
 /// <summary>
 ///     The OllamaTranslator class provides functionality to translate text from English to Finnish using the Ollama API.
@@ -55,10 +55,21 @@ public class OllamaTranslator
             {
                 await Task.Delay(100, token); // Small delay to prevent overwhelming the API, a delay without blocking.
 
+                var response = string.Empty;
+                OllamaResponseObject? responseObject;
                 try
                 {
-                    var response = await _translationService.TranslateAsync(entry.SourceText);
-                    var responseObject = JsonConvert.DeserializeObject<OllamaResponseObject>(response);
+                    response = await _translationService.TranslateAsync(entry.SourceText);
+                    responseObject = JsonConvert.DeserializeObject<OllamaResponseObject>(response);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error deserializing '{nameof(OllamaResponseObject)}' : {response}: {ex.Message}");
+                    throw;
+                }
+
+                try
+                {
                     if (responseObject == null)
                     {
                         Console.WriteLine($"Received NULL response for '{entry.SourceText}'.");
@@ -118,6 +129,7 @@ public class OllamaTranslator
             if (!records.Any())
             {
                 Console.WriteLine($"No records found in `{inputFilepath}`. Please check the file content.");
+                csvFileHandler.WriteCsvRecords([], outputFilepath);
                 return; // Exit if no records to process
             }
 

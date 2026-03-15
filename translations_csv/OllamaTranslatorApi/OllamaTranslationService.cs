@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using Newtonsoft.Json;
 
-namespace TranslationTools.OllamaApi;
+namespace OllamaTranslatorApi;
 
 public class OllamaTranslationService(HttpClient? httpClient = null) : ITranslationService
 {

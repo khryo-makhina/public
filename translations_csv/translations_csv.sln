@@ -20,6 +20,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OllamaTranslatorApp", "Olla
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TextFileSplitterApp", "TextFileSplitterApp\TextFileSplitterApp.csproj", "{52133382-3C01-4DBA-B859-6FC0685101E9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OllamaTranslatorApi", "OllamaTranslatorApi\OllamaTranslatorApi.csproj", "{3CC61762-8728-4B14-80BA-D76345C3B7DD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OllamaTranslatorApi.Tests", "OllamaTranslatorApi.Tests\OllamaTranslatorApi.Tests.csproj", "{8CFBD279-A3F4-4C2F-BCF5-1237BC9A107D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,6 +54,14 @@ Global
 		{52133382-3C01-4DBA-B859-6FC0685101E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{52133382-3C01-4DBA-B859-6FC0685101E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{52133382-3C01-4DBA-B859-6FC0685101E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3CC61762-8728-4B14-80BA-D76345C3B7DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3CC61762-8728-4B14-80BA-D76345C3B7DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3CC61762-8728-4B14-80BA-D76345C3B7DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3CC61762-8728-4B14-80BA-D76345C3B7DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8CFBD279-A3F4-4C2F-BCF5-1237BC9A107D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CFBD279-A3F4-4C2F-BCF5-1237BC9A107D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CFBD279-A3F4-4C2F-BCF5-1237BC9A107D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CFBD279-A3F4-4C2F-BCF5-1237BC9A107D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

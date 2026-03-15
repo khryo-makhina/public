@@ -1,4 +1,4 @@
-﻿namespace TranslationTools.OllamaApi;
+﻿namespace OllamaTranslatorApi;
 
 /// <summary>
 ///   Represents a single entry in the translations CSV file, containing the source text and its corresponding target text. This class serves as a data model for storing and manipulating translation pairs during the processing of the CSV file, allowing for easy access to both the original text and its translation throughout the application.

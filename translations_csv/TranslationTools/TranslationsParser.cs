@@ -57,6 +57,7 @@ public class TranslationsParser
 
         LanguageExtractionResult languageExtractionResult;
 
+#pragma warning disable IDE0045 // Convert to conditional expression
         if (headerLine.Contains(ColumnSourceLanguage, StringComparison.InvariantCultureIgnoreCase) &&
             headerLine.Contains(ColumnTargetLanguage, StringComparison.InvariantCultureIgnoreCase))
         {
@@ -66,6 +67,7 @@ public class TranslationsParser
         {
             languageExtractionResult = ExtractSourceAndTargetLanguages(headerColumns);
         }
+#pragma warning restore IDE0045 // Convert to conditional expression
 
         string[] sourceLanguages = languageExtractionResult.SourceLanguages;
         string[] targetLanguages = languageExtractionResult.TargetLanguages;
@@ -226,7 +228,7 @@ public class TranslationsParser
                 targets.Add(split[1]);
             }
         }
-        
+
         return new LanguageExtractionResult(sources.ToArray(), targets.ToArray());
     }
 
@@ -285,6 +287,7 @@ public class TranslationsParser
             }
 
             string languageName;
+#pragma warning disable IDE0045 // Convert to conditional expression
             if (isSource)
             {
                 languageName = headerColumns
@@ -297,10 +300,12 @@ public class TranslationsParser
                     .First(x => x.StartsWith(ColumnTargetLanguage, StringComparison.InvariantCultureIgnoreCase))
                     .Split(':')[1];
             }
+#pragma warning restore IDE0045 // Convert to conditional expression
             var column = columns[i];
             var entry = new TextEntry
             {
-                Language = voiceLanguages.FirstOrDefault(x=>x.LanguageName == languageName) ?? VoiceLanguage.System,
+                Language = voiceLanguages.FirstOrDefault(x => x.LanguageName == languageName) ??
+                           VoiceLanguage.System,
                 Text = column.Trim('"').Trim()
             };
 

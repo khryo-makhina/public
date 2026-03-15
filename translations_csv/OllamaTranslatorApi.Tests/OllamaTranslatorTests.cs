@@ -1,7 +1,6 @@
 ﻿using Shouldly;
-using TranslationTools.OllamaApi;
 
-namespace TranslationTools.Tests;
+namespace OllamaTranslatorApi.Tests;
 
 //namespace TranslationTools.OllamaApi.Tests
 public class OllamaTranslatorTests : IDisposable
@@ -192,7 +191,7 @@ One more,,";
     {
         // Given a translator using the test translation service and a non-existent input path
         var translator = new OllamaTranslator(new TestTranslationService());
-        var nonExistentPath = Path.Combine(Path.GetTempPath(), "DefinitelyNonexistentFile12345.csv");
+        var nonExistentPath = GetPathForFile("DefinitelyNonexistentFile12345.csv");
 
         // When processing the non-existent file
         var exception = await Assert.ThrowsAsync<FileNotFoundException>(() =>
@@ -229,16 +228,24 @@ One more,,";
     // Helper to create temp input and output file paths and write provided content to the input
     private (string inputPath, string outputPath) CreateTempInputOutputCsv(string content)
     {
-        var input = Path.Combine(Path.GetTempPath(), "test_input_" + Guid.NewGuid() + ".csv");
-        var output = Path.Combine(Path.GetTempPath(), "test_output_" + Guid.NewGuid() + ".csv");
+        var testInput = "test_input_" + Guid.NewGuid() + ".csv";
+        var input = GetPathForFile(testInput);
+        var testOutput = "test_output_" + Guid.NewGuid() + ".csv";
+        var output = GetPathForFile(testOutput);
         File.WriteAllText(input, content);
         return (input, output);
+    }
+
+    private static string GetPathForFile(string testInput)
+    {
+        return Path.Combine(Path.GetTempPath(), testInput);
     }
 
     // Helper to create an empty temp file
     private string CreateTempEmptyFile()
     {
-        var path = Path.Combine(Path.GetTempPath(), "empty_input_" + Guid.NewGuid() + ".csv");
+        var emptyInput = "empty_input_" + Guid.NewGuid() + ".csv";
+        var path = GetPathForFile(emptyInput);
         File.WriteAllText(path, string.Empty);
         return path;
     }
@@ -248,7 +255,10 @@ One more,,";
     {
         try
         {
-            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
         }
         catch
         {

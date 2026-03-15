@@ -1,10 +1,10 @@
-namespace TranslationTools.OllamaApi;
+namespace OllamaTranslatorApi;
 
 /// <summary>
 ///     Represents the response object returned by the Ollama API when making a request to generate a response from a
 ///     model.
 /// </summary>
-public class OllamaResponseObject
+public class OllamaResponseObject //TODO Check and remove. The translation response is no longer a JSON but a string.
 {
     /// <summary>
     ///     The identifier of the model that produced the response (for example, "llama2" or a custom model name).

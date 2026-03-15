@@ -1,4 +1,4 @@
-﻿namespace TranslationTools.OllamaApi;
+﻿namespace OllamaTranslatorApi;
 
 /*Usage example:
 class Program

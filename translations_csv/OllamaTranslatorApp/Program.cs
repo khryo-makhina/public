@@ -1,7 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Text;
-using TranslationTools.OllamaApi;
+using OllamaTranslatorApi;
 
 namespace OllamaTranslatorApp;
 
@@ -20,8 +20,6 @@ internal class Program
             Console.WriteLine($"Error: {ex.Message}");
             Environment.Exit(1);
         }
-
-        
     }
     private static async Task RunTranslationAsync(string[] args)
     {

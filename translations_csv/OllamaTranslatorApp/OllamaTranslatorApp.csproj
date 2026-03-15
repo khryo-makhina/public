@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\OllamaTranslatorApi\OllamaTranslatorApi.csproj" />
     <ProjectReference Include="..\TranslationTools\TranslationTools.csproj" />
   </ItemGroup>
 

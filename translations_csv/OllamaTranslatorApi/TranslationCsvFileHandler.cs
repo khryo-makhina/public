@@ -3,7 +3,7 @@ using System.Text;
 using CsvHelper;
 using CsvHelper.Configuration;
 
-namespace TranslationTools.OllamaApi;
+namespace OllamaTranslatorApi;
 
 internal class TranslationCsvFileHandler
 {

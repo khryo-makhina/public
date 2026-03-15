@@ -1,6 +1,4 @@
-﻿using TranslationTools.OllamaApi;
-
-namespace TranslationTools.Tests;
+﻿namespace OllamaTranslatorApi.Tests;
 
 /// <summary>
 ///   A test implementation of the ITranslationService interface for unit testing purposes. This class provides a simple mock translation service that returns predefined translations for specific input texts. It is designed to facilitate testing of components that depend on the ITranslationService without requiring an actual translation API or service to be available. The TranslateAsync method simulates asynchronous translation by returning a Task with the appropriate translation based on the input text, allowing for easy integration into unit tests that verify translation functionality.
@@ -17,14 +15,18 @@ public class TestTranslationService : ITranslationService
     {
         try
         {
-            return Task.FromResult(text switch
+            var mockTranslationResolved = text switch
             {
                 "Unknown" => "MockTranslation:Unknown",
                 "Hello" => "Hola",
                 "World" => "Mundo",
                 "Test" => "Prueba",
                 _ => throw new NotSupportedException($"No translation for '{text}'")
-            });
+            };
+
+            Task<string> translateAsync = Task.FromResult(mockTranslationResolved);
+
+            return translateAsync;
         }
         catch (Exception exception)
         {

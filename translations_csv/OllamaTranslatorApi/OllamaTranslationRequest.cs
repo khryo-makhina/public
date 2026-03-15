@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace TranslationTools.OllamaApi;
+namespace OllamaTranslatorApi;
 
 /// <summary>
 ///  Represents a request to the Ollama API for translation, containing the model to be used, the prompt text to be translated, and a flag indicating whether the response should be streamed. This class serves as a data model for serializing the request parameters into JSON format when making API calls to the Ollama translation service, allowing for easy configuration of the translation request and ensuring that all necessary information is included in the API call.

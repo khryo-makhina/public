@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace TranslationTools.OllamaApi;
+namespace OllamaTranslatorApi;
 
 /// <summary>
 ///  Represents the response from the Ollama API, containing the translated text, any context information, and a flag indicating whether the translation process is complete. This class serves as a data model for deserializing the JSON response from the Ollama API, allowing for easy access to the translation results and related metadata throughout the application.
